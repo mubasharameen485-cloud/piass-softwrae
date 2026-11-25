@@ -8,6 +8,8 @@ import TeacherModule from './modules/teachers/TeacherModule';
 import TeacherPaymentManager from './modules/teachers/TeacherPaymentManager';
 import ReportManager from './modules/reports/ReportManager';
 import TeacherDashboard from './modules/teachers/TeacherDashboard';
+import TeacherDirectoryHub from './modules/teacherDirectory/TeacherDirectoryHub';
+import ArchiveHub from './modules/archiveRecords/ArchiveHub';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -52,6 +54,12 @@ export default function App() {
           <button onClick={() => setActiveTab('manage-students')} style={{ textAlign: 'left', background: activeTab === 'manage-students' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>⚙️ Manage & Promote Hub</button>
           <button onClick={() => setActiveTab('teachers')} style={{ textAlign: 'left', background: activeTab === 'teachers' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>👨‍🏫 Teacher Registration</button>
           <button onClick={() => setActiveTab('teacher-salary')} style={{ textAlign: 'left', background: activeTab === 'teacher-salary' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>💵 Teacher Salaries</button>
+        
+        
+<button onClick={() => setActiveTab('teacher-directory')} style={{ textAlign: 'left', background: activeTab === 'teacher-directory' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>📁 Teachers Directory</button>
+<button onClick={() => setActiveTab('archive')} style={{ textAlign: 'left', background: activeTab === 'archive' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>🗂️ Past / Archive Records</button>
+
+        
         </nav>
       </aside>
 
@@ -65,6 +73,8 @@ export default function App() {
         {activeTab === 'manage-students' && <StudentManageHub />}
         {activeTab === 'teachers' && <TeacherModule />}
         {activeTab === 'teacher-salary' && <TeacherPaymentManager />}
+        {activeTab === 'teacher-directory' && <TeacherDirectoryHub />}
+{activeTab === 'archive' && <ArchiveHub />}
       </main>
 
 
