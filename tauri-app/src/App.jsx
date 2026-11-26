@@ -13,6 +13,14 @@ import ArchiveHub from './modules/archiveRecords/ArchiveHub';
 import BroadcastHub from './modules/broadcast/BroadcastHub';
 import AttendanceHub from './modules/attendance/AttendanceHub';
 
+import LibraryHub from './modules/library/LibraryHub';
+import CertificateHub from './modules/certificates/CertificateHub';
+import ExamHub from './modules/exams/ExamHub';
+import ResultHub from './modules/results/ResultHub';
+
+import AdminDashboardHub from './modules/adminDashboard/AdminDashboardHub';
+
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('reports');
@@ -60,6 +68,12 @@ export default function App() {
           <button onClick={() => setActiveTab('teacher-directory')} style={{ textAlign: 'left', background: activeTab === 'teacher-directory' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>📁 Teachers Directory</button>
           <button onClick={() => setActiveTab('teacher-salary')} style={{ textAlign: 'left', background: activeTab === 'teacher-salary' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>💵 Teacher Salaries</button>
           <button onClick={() => setActiveTab('archive')} style={{ textAlign: 'left', background: activeTab === 'archive' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>🗂️ Past / Archive Records</button>
+        
+        <button onClick={() => setActiveTab('library')} style={{ textAlign: 'left', background: activeTab === 'library' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>📚 Library Management</button>
+<button onClick={() => setActiveTab('certificates')} style={{ textAlign: 'left', background: activeTab === 'certificates' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>🎓 Certificate & Degree Hub</button>
+<button onClick={() => setActiveTab('exams')} style={{ textAlign: 'left', background: activeTab === 'exams' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>📝 Exams & Assessment Hub</button>
+        <button onClick={() => setActiveTab('results')} style={{ textAlign: 'left', background: activeTab === 'results' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>📊 Result & Grading Hub</button>
+        <button onClick={() => setActiveTab('admin-dash')} style={{ textAlign: 'left', background: activeTab === 'admin-dash' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>🛡️ Admin Control & Audit</button>
         </nav>
       </aside>
 
@@ -76,6 +90,11 @@ export default function App() {
         {activeTab === 'teacher-directory' && <TeacherDirectoryHub />}
         {activeTab === 'teacher-salary' && <TeacherPaymentManager />}
         {activeTab === 'archive' && <ArchiveHub />}
+        {activeTab === 'library' && <LibraryHub />}
+{activeTab === 'certificates' && <CertificateHub />}
+{activeTab === 'exams' && <ExamHub />}
+{activeTab === 'results' && <ResultHub />}
+{activeTab === 'admin-dash' && <AdminDashboardHub />}
       </main>
 
     </div>
