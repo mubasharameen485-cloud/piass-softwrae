@@ -7,9 +7,11 @@ import FeeManager from './modules/fees/FeeManager';
 import TeacherModule from './modules/teachers/TeacherModule';
 import TeacherPaymentManager from './modules/teachers/TeacherPaymentManager';
 import ReportManager from './modules/reports/ReportManager';
-import TeacherDashboard from './modules/teachers/TeacherDashboard';
+import TeacherDashboard from './modules/teacherDashboard/TeacherDashboard';
 import TeacherDirectoryHub from './modules/teacherDirectory/TeacherDirectoryHub';
 import ArchiveHub from './modules/archiveRecords/ArchiveHub';
+import BroadcastHub from './modules/broadcast/BroadcastHub';
+import AttendanceHub from './modules/attendance/AttendanceHub';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -48,35 +50,33 @@ export default function App() {
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '20px', padding: '0 10px' }}>
           <button onClick={() => setActiveTab('reports')} style={{ textAlign: 'left', background: activeTab === 'reports' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>📊 Daily / Monthly Reports</button>
+          <button onClick={() => setActiveTab('attendance')} style={{ textAlign: 'left', background: activeTab === 'attendance' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>📌 Attendance System</button>
+          <button onClick={() => setActiveTab('broadcast')} style={{ textAlign: 'left', background: activeTab === 'broadcast' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>📢 Teachers Broadcast</button>
           <button onClick={() => setActiveTab('fees')} style={{ textAlign: 'left', background: activeTab === 'fees' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>💰 Fee Management</button>
           <button onClick={() => setActiveTab('admission')} style={{ textAlign: 'left', background: activeTab === 'admission' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>📝 New Admission</button>
           <button onClick={() => setActiveTab('students')} style={{ textAlign: 'left', background: activeTab === 'students' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>📋 Student Directory</button>
           <button onClick={() => setActiveTab('manage-students')} style={{ textAlign: 'left', background: activeTab === 'manage-students' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>⚙️ Manage & Promote Hub</button>
           <button onClick={() => setActiveTab('teachers')} style={{ textAlign: 'left', background: activeTab === 'teachers' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>👨‍🏫 Teacher Registration</button>
+          <button onClick={() => setActiveTab('teacher-directory')} style={{ textAlign: 'left', background: activeTab === 'teacher-directory' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>📁 Teachers Directory</button>
           <button onClick={() => setActiveTab('teacher-salary')} style={{ textAlign: 'left', background: activeTab === 'teacher-salary' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>💵 Teacher Salaries</button>
-        
-        
-<button onClick={() => setActiveTab('teacher-directory')} style={{ textAlign: 'left', background: activeTab === 'teacher-directory' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>📁 Teachers Directory</button>
-<button onClick={() => setActiveTab('archive')} style={{ textAlign: 'left', background: activeTab === 'archive' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>🗂️ Past / Archive Records</button>
-
-        
+          <button onClick={() => setActiveTab('archive')} style={{ textAlign: 'left', background: activeTab === 'archive' ? '#115e59' : 'transparent', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>🗂️ Past / Archive Records</button>
         </nav>
       </aside>
 
       {/* MAIN CONTENT AREA */}
-            {/* MAIN CONTENT AREA */}
       <main style={{ flex: 1, padding: '30px', overflowY: 'auto' }}>
         {activeTab === 'reports' && <ReportManager />}
+        {activeTab === 'attendance' && <AttendanceHub />}
+        {activeTab === 'broadcast' && <BroadcastHub />}
         {activeTab === 'fees' && <FeeManager />}
         {activeTab === 'admission' && <StudentForm />}
         {activeTab === 'students' && <StudentList />}
         {activeTab === 'manage-students' && <StudentManageHub />}
         {activeTab === 'teachers' && <TeacherModule />}
-        {activeTab === 'teacher-salary' && <TeacherPaymentManager />}
         {activeTab === 'teacher-directory' && <TeacherDirectoryHub />}
-{activeTab === 'archive' && <ArchiveHub />}
+        {activeTab === 'teacher-salary' && <TeacherPaymentManager />}
+        {activeTab === 'archive' && <ArchiveHub />}
       </main>
-
 
     </div>
   );

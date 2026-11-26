@@ -8,7 +8,7 @@ mod teacher_payments;
 mod reports;
 mod teacher_directory;
 mod archive_records;
-
+mod attendance_system;
 
 use fees::collect_fee_backend;
 use students::register_student_backend;
@@ -17,7 +17,7 @@ use teacher_payments::pay_teacher_salary_backend;
 use reports::add_expense_backend;
 use teacher_directory::update_teacher_backend;
 use archive_records::ping_archive;
-
+use attendance_system::save_bulk_attendance_backend;
 
 
 fn main() {
@@ -29,7 +29,8 @@ fn main() {
               pay_teacher_salary_backend,
               add_expense_backend,
               update_teacher_backend,
-            ping_archive
+            ping_archive,
+            save_bulk_attendance_backend
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
