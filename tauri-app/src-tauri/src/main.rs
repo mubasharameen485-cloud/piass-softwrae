@@ -21,6 +21,7 @@ use attendance_system::save_bulk_attendance_backend;
 
 
 fn main() {
+   
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             register_student_backend,

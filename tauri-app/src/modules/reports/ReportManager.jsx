@@ -1,20 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import Background from './Background';
+import Print from './Print';
 import { fetchFinancialData, saveExpense } from './reportService';
 
-export default function ReportManager() {
-  const [viewType, setViewType] = useState('daily'); // 'daily' or 'monthly'
-  const [showExpenseModal, setShowExpenseModal] = useState(false);
-  
-  // Expense Form State
-  const [expenseTitle, setExpenseTitle] = useState('');
-  const [expenseAmount, setExpenseAmount] = useState('');
-  const [adminName, setAdminName] = useState('');
+const getLocalToday = () => new Date().toLocaleDateString('en-CA');
+const money = (value) => `Rs. ${Number(value || 0).toLocaleString('en-PK')}`;
 
-  // Data States
+export default function ReportManager() {
+  const today = useMemo(() => getLocalToday(), []);
+  const monthNow = today.slice(0, 7);
+
   const [fees, setFees] = useState([]);
   const [salaries, setSalaries] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Add Expense Modal State
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [expenseTitle, setExpenseTitle] = useState('');
+  const [expenseAmount, setExpenseAmount] = useState('');
+  const [adminName, setAdminName] = useState('');
+
+  const [period, setPeriod] = useState('daily');
+  const [date, setDate] = useState(today);
+  const [month, setMonth] = useState(monthNow);
+  const [from, setFrom] = useState(today);
+  const [to, setTo] = useState(today);
 
   const loadData = async () => {
     try {
@@ -24,7 +35,7 @@ export default function ReportManager() {
       setSalaries(data.salaries);
       setExpenses(data.expenses);
     } catch (err) {
-      console.error('Error loading reports data:', err);
+      console.error('Error fetching financial reports:', err);
     } finally {
       setLoading(false);
     }
@@ -42,9 +53,10 @@ export default function ReportManager() {
         amount: parseFloat(expenseAmount) || 0,
         added_by: adminName || 'Admin'
       });
-      alert('✅ Expense Recorded Successfully!');
+      alert('✅ Expense recorded successfully!');
       setExpenseTitle('');
       setExpenseAmount('');
+      setAdminName('');
       setShowExpenseModal(false);
       loadData();
     } catch (err) {
@@ -52,178 +64,269 @@ export default function ReportManager() {
     }
   };
 
-  // --- FILTER LOGIC ---
-  const now = new Date();
+  const range = useMemo(() => {
+    if (period === 'daily') return [date, date];
+    if (period === 'monthly') {
+      const [year, m] = month.split('-').map(Number);
+      const lastDay = String(new Date(year, m, 0).getDate()).padStart(2, '0');
+      return [`${month}-01`, `${month}-${lastDay}`];
+    }
+    return [from, to];
+  }, [period, date, month, from, to]);
 
-  const isToday = (dateStr) => {
-    const d = new Date(dateStr);
-    return d.toDateString() === now.toDateString();
+  const filterDate = (dateStr) => {
+    if (!dateStr) return false;
+    const d = dateStr.split('T')[0];
+    return d >= range[0] && d <= range[1];
   };
 
-  const isWithinLast30Days = (dateStr) => {
-    const d = new Date(dateStr);
-    const diffTime = Math.abs(now - d);
-    const diffDays = diffTime / (1000 * 60 * 60 * 24);
-    return diffDays <= 30;
-  };
+  const filteredFees = fees.filter((row) => filterDate(row.payment_date));
+  const filteredSalaries = salaries.filter((row) => filterDate(row.payment_date));
+  const filteredExpenses = expenses.filter((row) => filterDate(row.expense_date));
 
-  const filteredFees = fees.filter(f => viewType === 'daily' ? isToday(f.payment_date) : isWithinLast30Days(f.payment_date));
-  const filteredSalaries = salaries.filter(s => viewType === 'daily' ? isToday(s.payment_date) : isWithinLast30Days(s.payment_date));
-  const filteredExpenses = expenses.filter(e => viewType === 'daily' ? isToday(e.expense_date) : isWithinLast30Days(e.expense_date));
+  const income = filteredFees.reduce((sum, row) => sum + Number(row.paid_amount || 0), 0);
+  const salaryTotal = filteredSalaries.reduce((sum, row) => sum + Number(row.paid_amount || 0), 0);
+  const expenseTotal = filteredExpenses.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+  const balance = income - salaryTotal - expenseTotal;
 
-  const totalIncome = filteredFees.reduce((acc, curr) => acc + Number(curr.paid_amount), 0);
-  const totalSalariesPaid = filteredSalaries.reduce((acc, curr) => acc + Number(curr.paid_amount), 0);
-  const totalOtherExpenses = filteredExpenses.reduce((acc, curr) => acc + Number(curr.amount), 0);
-  const totalOutflow = totalSalariesPaid + totalOtherExpenses;
-  const netBalance = totalIncome - totalOutflow;
+  const label =
+    period === 'daily'
+      ? `Daily Report — ${date}`
+      : period === 'monthly'
+      ? `Monthly Report — ${month}`
+      : `Custom Report — ${from} to ${to}`;
 
-  const handlePrintReport = () => {
-    window.print();
-  };
+  const reportContent = (
+    <div className="text-slate-900 font-medium">
+      <header className="mb-6 border-b-2 border-slate-300 pb-4 text-center">
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-[#078343]">
+          Official Financial Statement
+        </p>
+        <h2 className="mt-1 text-3xl font-black text-[#062b55]">
+          {label}
+        </h2>
+        <p className="text-sm font-semibold text-slate-600 mt-1">
+          Generated: {new Date().toLocaleString('en-PK')}
+        </p>
+      </header>
 
-  return (
-    <div style={{ padding: '20px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'Arial' }}>
-      <h2>📊 Financial & Daily/Monthly Reports</h2>
-
-      {/* Top Action Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0' }} className="no-print">
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <select 
-            value={viewType} 
-            onChange={(e) => setViewType(e.target.value)} 
-            style={{ padding: '10px', fontWeight: 'bold', borderRadius: '4px' }}
+      {/* Summary Cards with Larger Text */}
+      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {[
+          ['Total Income', income, 'border-l-emerald-600'],
+          ['Salaries', salaryTotal, 'border-l-[#062b55]'],
+          ['Other Expenses', expenseTotal, 'border-l-amber-500'],
+          ['Net Balance', balance, balance < 0 ? 'border-l-red-600' : 'border-l-emerald-600'],
+        ].map(([name, value, accent]) => (
+          <div
+            key={name}
+            className={`rounded-2xl border border-slate-300 border-l-6 ${accent} bg-white/90 p-5 shadow-sm`}
           >
-            <option value="daily">📅 Today's Report (Last 24 Hours)</option>
-            <option value="monthly">🗓️ Monthly Report (Last 30 Days)</option>
-          </select>
-        </div>
-
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button 
-            onClick={handlePrintReport} 
-            style={{ background: '#16a34a', color: 'white', padding: '10px 15px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-          >
-            🖨️ Print / Save PDF Report
-          </button>
-          <button 
-            onClick={() => setShowExpenseModal(true)} 
-            style={{ background: '#dc2626', color: 'white', padding: '10px 15px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-          >
-            ➕ Add Other Expense
-          </button>
-        </div>
+            <p className="text-xs font-black uppercase tracking-wider text-slate-600">{name}</p>
+            <p
+              className={`mt-2 text-2xl font-black ${
+                name === 'Net Balance' && value < 0 ? 'text-red-600' : 'text-[#062b55]'
+              }`}
+            >
+              {money(value)}
+            </p>
+          </div>
+        ))}
       </div>
 
-      {/* Expense Modal Popup */}
-      {showExpenseModal && (
-        <div style={{ background: '#f8fafc', border: '2px solid #dc2626', padding: '20px', borderRadius: '6px', marginBottom: '20px' }} className="no-print">
-          <h3>Record Other Expense (e.g. Bill, Tea, Repair)</h3>
-          <form onSubmit={handleExpenseSubmit} style={{ display: 'grid', gap: '10px' }}>
-            <input type="text" placeholder="Expense Title (e.g. Electricity Bill)" value={expenseTitle} onChange={(e) => setExpenseTitle(e.target.value)} required style={{ padding: '8px' }} />
-            <input type="number" placeholder="Amount (Rs)" value={expenseAmount} onChange={(e) => setExpenseAmount(e.target.value)} required style={{ padding: '8px' }} />
-            <input type="text" placeholder="Recorded By Admin Name" value={adminName} onChange={(e) => setAdminName(e.target.value)} required style={{ padding: '8px' }} />
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button type="submit" style={{ background: '#16a34a', color: 'white', padding: '8px 15px', border: 'none', cursor: 'pointer' }}>Save Expense</button>
-              <button type="button" onClick={() => setShowExpenseModal(false)} style={{ background: '#64748b', color: 'white', padding: '8px 15px', border: 'none', cursor: 'pointer' }}>Cancel</button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {loading ? (
-        <p>Loading financial reports...</p>
-      ) : (
-        <div id="printable-report-area">
-          {/* Printable Header */}
-          <div style={{ textAlign: 'center', marginBottom: '20px', borderBottom: '2px solid #0f766e', paddingBottom: '10px' }}>
-            <h2>PIASS COLLEGE OF NURSING & IT, KASUR</h2>
-            <h3>Official Financial Statement ({viewType === 'daily' ? 'Daily Report' : 'Monthly Report'})</h3>
-            <p>Generated on: {new Date().toLocaleString()}</p>
-          </div>
-
-          {/* Summary Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '30px' }}>
-            <div style={{ background: '#dcfce7', padding: '15px', borderRadius: '6px', borderLeft: '5px solid #16a34a' }}>
-              <h4>Total Income (Fee)</h4>
-              <p style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#166534' }}>Rs. {totalIncome}</p>
-            </div>
-            <div style={{ background: '#fee2e2', padding: '15px', borderRadius: '6px', borderLeft: '5px solid #dc2626' }}>
-              <h4>Teacher Salaries</h4>
-              <p style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#991b1b' }}>Rs. {totalSalariesPaid}</p>
-            </div>
-            <div style={{ background: '#fef9c3', padding: '15px', borderRadius: '6px', borderLeft: '5px solid #ca8a04' }}>
-              <h4>Other Expenses</h4>
-              <p style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#854d0e' }}>Rs. {totalOtherExpenses}</p>
-            </div>
-            <div style={{ background: '#e0f2fe', padding: '15px', borderRadius: '6px', borderLeft: '5px solid #0284c7' }}>
-              <h4>Net Balance</h4>
-              <p style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#0369a1' }}>Rs. {netBalance}</p>
-            </div>
-          </div>
-
-          {/* Detailed Lists */}
-          <div style={{ display: 'grid', gap: '20px' }}>
-            <div style={{ background: '#fff', padding: '15px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-              <h4>📥 Student Fee Collections</h4>
-              <table border="1" cellPadding="8" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
-                <thead>
-                  <tr style={{ background: '#f1f5f9' }}><th>Roll No</th><th>Paid Amount</th><th>Note</th><th>Collector</th><th>Date/Time</th></tr>
-                </thead>
-                <tbody>
-                  {filteredFees.length > 0 ? filteredFees.map(f => (
-                    <tr key={f.id}>
-                      <td>{f.roll_no}</td>
-                      <td style={{ color: 'green', fontWeight: 'bold' }}>Rs. {f.paid_amount}</td>
-                      <td>{f.installment_note}</td>
-                      <td>{f.collected_by}</td>
-                      <td>{new Date(f.payment_date).toLocaleString()}</td>
-                    </tr>
-                  )) : <tr><td colSpan="5" style={{ textAlign: 'center' }}>No fee records found.</td></tr>}
-                </tbody>
-              </table>
-            </div>
-
-            <div style={{ background: '#fff', padding: '15px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-              <h4>📤 Teacher Salaries Disbursed</h4>
-              <table border="1" cellPadding="8" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
-                <thead>
-                  <tr style={{ background: '#f1f5f9' }}><th>Teacher ID</th><th>Paid Salary</th><th>Month</th><th>Admin</th><th>Date/Time</th></tr>
-                </thead>
-                <tbody>
-                  {filteredSalaries.length > 0 ? filteredSalaries.map(s => (
-                    <tr key={s.id}>
-                      <td>{s.teacher_id}</td>
-                      <td style={{ color: 'red', fontWeight: 'bold' }}>Rs. {s.paid_amount}</td>
-                      <td>{s.salary_month}</td>
-                      <td>{s.paid_by_admin}</td>
-                      <td>{new Date(s.payment_date).toLocaleString()}</td>
-                    </tr>
-                  )) : <tr><td colSpan="5" style={{ textAlign: 'center' }}>No salary records found.</td></tr>}
-                </tbody>
-              </table>
-            </div>
-
-            <div style={{ background: '#fff', padding: '15px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-              <h4>🧾 Other Expenses (Akhrajat)</h4>
-              <table border="1" cellPadding="8" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
-                <thead>
-                  <tr style={{ background: '#f1f5f9' }}><th>Title</th><th>Amount</th><th>Added By</th><th>Date/Time</th></tr>
-                </thead>
-                <tbody>
-                  {filteredExpenses.length > 0 ? filteredExpenses.map(e => (
-                    <tr key={e.id}>
-                      <td>{e.title}</td>
-                      <td style={{ color: 'orange', fontWeight: 'bold' }}>Rs. {e.amount}</td>
-                      <td>{e.added_by}</td>
-                      <td>{new Date(e.expense_date).toLocaleString()}</td>
-                    </tr>
-                  )) : <tr><td colSpan="4" style={{ textAlign: 'center' }}>No other expenses found.</td></tr>}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
+      <DataTable
+        title="Student Fee Collections"
+        rows={filteredFees}
+        columns={['Roll No', 'Amount', 'Note', 'Collector', 'Date']}
+        fields={['roll_no', 'paid_amount', 'installment_note', 'collected_by', 'payment_date']}
+      />
+      <DataTable
+        title="Teacher Salaries"
+        rows={filteredSalaries}
+        columns={['Teacher ID', 'Amount', 'Month', 'Admin', 'Date']}
+        fields={['teacher_id', 'paid_amount', 'salary_month', 'paid_by_admin', 'payment_date']}
+      />
+      <DataTable
+        title="Other Expenses"
+        rows={filteredExpenses}
+        columns={['Title', 'Amount', 'Added By', 'Date']}
+        fields={['title', 'amount', 'added_by', 'expense_date']}
+      />
     </div>
+  );
+
+  return (
+    <>
+      <div className="screen-report-only h-full w-full">
+        <Background>
+          <div className="mx-auto max-w-7xl px-2">
+            
+            {/* Top Control Bar */}
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-300 bg-white px-6 py-5 shadow-sm">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-wider text-[#078343]">
+                  PIASS College of Nursing Kasur
+                </p>
+                <h1 className="text-2xl font-black text-[#062b55]">Financial Reports & Expenses</h1>
+              </div>
+
+              {/* Filters & Actions */}
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() => setShowExpenseModal(true)}
+                  className="cursor-pointer rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-red-700"
+                >
+                  + Add Expense (Kharcha)
+                </button>
+
+                <select
+                  value={period}
+                  onChange={(e) => setPeriod(e.target.value)}
+                  className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-bold text-[#062b55] focus:border-[#078343] focus:outline-none"
+                >
+                  <option value="daily">Daily</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+
+                {period === 'daily' && (
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-800"
+                  />
+                )}
+
+                {period === 'monthly' && (
+                  <input
+                    type="month"
+                    value={month}
+                    onChange={(e) => setMonth(e.target.value)}
+                    className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-800"
+                  />
+                )}
+
+                {period === 'custom' && (
+                  <>
+                    <input
+                      type="date"
+                      value={from}
+                      onChange={(e) => {
+                        setFrom(e.target.value);
+                        if (to < e.target.value) setTo(e.target.value);
+                      }}
+                      className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-800"
+                    />
+                    <input
+                      type="date"
+                      value={to}
+                      min={from}
+                      onChange={(e) => setTo(e.target.value)}
+                      className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-800"
+                    />
+                  </>
+                )}
+
+                <button
+                  onClick={() => window.print()}
+                  className="cursor-pointer rounded-xl bg-[#062b55] px-6 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-[#0b3e78]"
+                >
+                  Print / Save PDF
+                </button>
+              </div>
+            </div>
+
+            {/* Add Expense Modal Popup */}
+            {showExpenseModal && (
+              <div className="mb-6 rounded-2xl border-2 border-red-500 bg-white p-6 shadow-lg">
+                <h3 className="mb-4 text-xl font-black text-[#062b55]">Record Manual Expense (Utility, Stationery, etc.)</h3>
+                <form onSubmit={handleExpenseSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                  <input
+                    type="text"
+                    placeholder="Expense Title (e.g. Electricity Bill)"
+                    value={expenseTitle}
+                    onChange={(e) => setExpenseTitle(e.target.value)}
+                    required
+                    className="rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Amount (Rs)"
+                    value={expenseAmount}
+                    onChange={(e) => setExpenseAmount(e.target.value)}
+                    required
+                    className="rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Added By (Admin Name)"
+                    value={adminName}
+                    onChange={(e) => setAdminName(e.target.value)}
+                    required
+                    className="rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold"
+                  />
+                  <div className="flex gap-2">
+                    <button type="submit" className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 font-bold text-white shadow-sm hover:bg-emerald-700">Save</button>
+                    <button type="button" onClick={() => setShowExpenseModal(false)} className="rounded-xl bg-slate-500 px-4 py-3 font-bold text-white shadow-sm hover:bg-slate-600">Cancel</button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Report Content */}
+            {loading ? <p className="text-center font-bold py-10 text-lg">Loading financial reports...</p> : <div className="px-1">{reportContent}</div>}
+          </div>
+        </Background>
+      </div>
+
+      <Print title="PIASS Financial Report">{reportContent}</Print>
+    </>
+  );
+}
+
+function DataTable({ title, rows, columns, fields }) {
+  return (
+    <section className="mb-8 break-inside-avoid">
+      <div className="mb-3 flex items-center gap-2.5">
+        <span className="h-6 w-2 rounded-full bg-[#078343]" />
+        <h3 className="text-base font-black uppercase tracking-wide text-[#062b55]">
+          {title}
+        </h3>
+      </div>
+
+      <div className="overflow-x-auto rounded-2xl border border-slate-300 bg-white shadow-xs print:border-none print:shadow-none">
+        <table className="w-full border-collapse text-left text-sm">
+          <thead className="bg-[#062b55] text-white">
+            <tr>
+              {columns.map((column) => (
+                <th key={column} className="px-5 py-3.5 font-bold tracking-wide">
+                  {column}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {rows.length ? (
+              rows.map((row) => (
+                <tr key={row.id || Math.random()} className="transition hover:bg-slate-50 font-semibold">
+                  {fields.map((field) => (
+                    <td key={field} className="px-5 py-3.5 text-slate-800">
+                      {field.includes('amount') ? money(row[field]) : row[field] ? String(row[field]).split('T')[0] : '—'}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={columns.length} className="p-8 text-center font-bold text-slate-400 text-sm">
+                  No records found for this period.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }

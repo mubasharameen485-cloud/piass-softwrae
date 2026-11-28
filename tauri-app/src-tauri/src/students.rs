@@ -25,6 +25,23 @@ pub async fn register_student_backend(student: Student) -> Result<String, String
     let client = reqwest::Client::new();
     let url = format!("{}/rest/v1/students", supabase_url);
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     let res = client
         .post(&url)
         .header("apikey", &supabase_key)

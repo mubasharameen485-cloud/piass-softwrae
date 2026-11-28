@@ -29,6 +29,7 @@ pub async fn pay_teacher_salary_backend(payment: TeacherPayment) -> Result<Strin
     let url = format!("{}/rest/v1/teacher_payments", clean_url);
 
     let client = reqwest::Client::new();
+    
     let res = client
         .post(&url)
         .header("apikey", &supabase_key)

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../../services/supabaseClient';
+import Background from '../reports/Background';
+import Print from '../reports/Print';
 
 export default function ArchiveHub() {
   const [selectedYear, setSelectedYear] = useState('2026');
@@ -42,7 +44,6 @@ export default function ArchiveHub() {
       const { data, error } = await query;
       if (error) throw error;
 
-      // Filter precisely by Year and Month in JavaScript based on admission/joining date
       const filtered = (data || []).filter(item => {
         const itemDateStr = item[dateField] || item.created_at || '2026-01-01';
         const itemDate = new Date(itemDateStr);
@@ -74,21 +75,48 @@ export default function ArchiveHub() {
     fetchArchiveData('students', prog);
   };
 
-  return (
-    <div style={{ padding: '20px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'Arial' }}>
-      <h2>🗂️ Past / Archive Records Hub</h2>
+  const archivePrintContent = printItem ? (
+    <div className="text-slate-900 font-medium p-4">
+      <header className="mb-6 border-b-2 border-slate-300 pb-4 text-center">
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-[#078343]">Official Archive Record</p>
+        <h2 className="mt-1 text-2xl font-black text-[#062b55]">PIASS College of Nursing & IT</h2>
+        <p className="text-xs font-semibold text-slate-500 mt-1">Generated: {new Date().toLocaleString('en-PK')}</p>
+      </header>
+
+      <div className="mb-8 rounded-xl border border-slate-300 bg-slate-50 p-6 grid grid-cols-2 gap-4 text-sm font-semibold text-slate-800">
+        <p><b>ID / Roll Number:</b> {printItem.roll_no || printItem.teacher_id}</p>
+        <p><b>Full Name:</b> {printItem.full_name}</p>
+        <p><b>Details / Program:</b> {printItem.category || printItem.subject}</p>
+        <p><b>Semester / Degree:</b> {printItem.semester || printItem.degree}</p>
+        <p><b>Record Date:</b> {printItem.admission_date || printItem.joining_date || 'N/A'}</p>
+        <p><b>Status:</b> <span className={printItem.status === 'Active' ? 'text-emerald-700 font-bold' : 'text-slate-700 font-bold'}>{printItem.status || 'Active'}</span></p>
+      </div>
+
+      <div className="flex justify-between mt-32 pt-4 border-t border-slate-400 text-sm font-bold">
+        <p>Verified By</p>
+        <p>Authorized Principal / Registrar Stamp</p>
+      </div>
+    </div>
+  ) : null;
+
+  const hubContent = (
+    <div className="text-slate-900 font-medium">
+      <header className="mb-6 border-b border-slate-200 pb-4">
+        <p className="text-xs font-extrabold uppercase tracking-wider text-[#078343]">PIASS College of Nursing Kasur</p>
+        <h1 className="text-2xl font-black text-[#062b55]">Past & Archive Records Hub</h1>
+      </header>
 
       {/* Year & Month Filter Bar */}
-      <div style={{ background: '#f1f5f9', padding: '15px', borderRadius: '8px', display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '20px' }}>
+      <div className="rounded-2xl border border-slate-300 bg-white p-5 shadow-xs flex flex-wrap gap-4 items-center mb-6 no-print">
         <div>
-          <label style={{ fontWeight: 'bold', marginRight: '5px' }}>Select Year:</label>
-          <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} style={{ padding: '8px' }}>
+          <label className="block text-xs font-black uppercase text-[#062b55] mb-1">Select Year:</label>
+          <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-bold">
             {years.map((y, i) => <option key={i} value={y}>{y}</option>)}
           </select>
         </div>
         <div>
-          <label style={{ fontWeight: 'bold', marginRight: '5px' }}>Select Month:</label>
-          <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} style={{ padding: '8px' }}>
+          <label className="block text-xs font-black uppercase text-[#062b55] mb-1">Select Month:</label>
+          <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-bold">
             {months.map((m, i) => <option key={i} value={m.value}>{m.label}</option>)}
           </select>
         </div>
@@ -96,12 +124,14 @@ export default function ArchiveHub() {
 
       {/* Category Selection */}
       {!targetType && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '30px' }}>
-          <div onClick={() => handleTypeSelect('students')} style={{ background: '#e0f2fe', border: '2px solid #0284c7', padding: '30px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2rem', color: '#0369a1' }}>
-            🎓 View Students Archive ({selectedYear})
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
+          <div onClick={() => handleTypeSelect('students')} className="cursor-pointer rounded-2xl border border-sky-300 bg-sky-50/50 p-8 text-center shadow-sm transition hover:bg-sky-100">
+            <h3 className="text-xl font-black text-sky-900">Students Archive</h3>
+            <p className="text-xs text-sky-700 mt-2">View historical student admissions for year {selectedYear}.</p>
           </div>
-          <div onClick={() => handleTypeSelect('teachers')} style={{ background: '#fef3c7', border: '2px solid #d97706', padding: '30px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2rem', color: '#b45309' }}>
-            👨‍🏫 View Teachers Archive ({selectedYear})
+          <div onClick={() => handleTypeSelect('teachers')} className="cursor-pointer rounded-2xl border border-amber-300 bg-amber-50/50 p-8 text-center shadow-sm transition hover:bg-amber-100">
+            <h3 className="text-xl font-black text-amber-900">Teachers Archive</h3>
+            <p className="text-xs text-amber-700 mt-2">View historical teacher joinings for year {selectedYear}.</p>
           </div>
         </div>
       )}
@@ -109,14 +139,14 @@ export default function ArchiveHub() {
       {/* Programs List for Students */}
       {targetType === 'students' && !selectedProgram && (
         <div>
-          <button onClick={() => setTargetType(null)} style={{ background: '#64748b', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginBottom: '15px' }}>
-            ← Back
+          <button onClick={() => setTargetType(null)} className="mb-6 cursor-pointer rounded-xl bg-slate-600 px-4 py-2 text-sm font-bold text-white shadow-xs hover:bg-slate-700">
+            ← Back to Categories
           </button>
-          <h3>Select Program for Year {selectedYear}:</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginTop: '15px' }}>
+          <h3 className="text-base font-black text-[#062b55] mb-4">Select Program for Year {selectedYear}:</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {programs.map((prog, i) => (
-              <div key={i} onClick={() => handleProgramSelect(prog)} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '15px', borderRadius: '6px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                <h4 style={{ margin: '0', color: '#0f766e' }}>{prog}</h4>
+              <div key={i} onClick={() => handleProgramSelect(prog)} className="cursor-pointer rounded-2xl border border-slate-300 bg-white p-5 shadow-xs transition hover:border-[#078343]">
+                <h4 className="text-base font-black text-[#062b55]">{prog}</h4>
               </div>
             ))}
           </div>
@@ -126,63 +156,53 @@ export default function ArchiveHub() {
       {/* Records Table */}
       {(targetType === 'teachers' || selectedProgram) && (
         <div>
-          <button onClick={() => { targetType === 'teachers' ? setTargetType(null) : setSelectedProgram(null); }} style={{ background: '#64748b', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginBottom: '15px' }}>
+          <button onClick={() => { targetType === 'teachers' ? setTargetType(null) : setSelectedProgram(null); }} className="mb-6 cursor-pointer rounded-xl bg-slate-600 px-4 py-2 text-sm font-bold text-white shadow-xs hover:bg-slate-700">
             ← Back
           </button>
           
-          <h3>Archive Records: {targetType === 'teachers' ? 'All Teachers' : selectedProgram} ({selectedYear} - {selectedMonth === 'All' ? 'All Months' : `Month ${selectedMonth}`})</h3>
+          <h3 className="text-base font-black text-[#062b55] mb-4">Archive Records: {targetType === 'teachers' ? 'All Teachers' : selectedProgram} ({selectedYear} - {selectedMonth === 'All' ? 'All Months' : `Month ${selectedMonth}`})</h3>
           
-          {loading ? <p>Loading archive data...</p> : (
-            <div style={{ background: '#fff', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-              <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: '#f1f5f9' }}>
-                    <th>ID / Roll No</th>
-                    <th>Full Name</th>
-                    <th>{targetType === 'teachers' ? 'Subject' : 'Semester'}</th>
-                    <th>Date</th>
-                    <th>Action</th>
+          {loading ? <p className="font-bold">Loading archive data...</p> : (
+            <div className="overflow-x-auto rounded-2xl border border-slate-300 bg-white shadow-xs">
+              <table className="w-full border-collapse text-left text-sm">
+                <thead className="bg-[#062b55] text-white">
+                  <tr>
+                    <th className="px-4 py-3 font-bold">ID / Roll No</th>
+                    <th className="px-4 py-3 font-bold">Full Name</th>
+                    <th className="px-4 py-3 font-bold">{targetType === 'teachers' ? 'Subject' : 'Semester'}</th>
+                    <th className="px-4 py-3 font-bold">Date</th>
+                    <th className="px-4 py-3 font-bold">Action</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-200">
                   {records.length > 0 ? records.map(r => (
-                    <tr key={r.id}>
-                      <td><b>{r.roll_no || r.teacher_id}</b></td>
-                      <td>{r.full_name}</td>
-                      <td>{r.subject || r.semester}</td>
-                      <td>{r.admission_date || r.joining_date || 'N/A'}</td>
-                      <td>
-                        <button onClick={() => setPrintItem(r)} style={{ background: '#16a34a', color: 'white', border: 'none', padding: '5px 10px', cursor: 'pointer', borderRadius: '4px' }}>
-                          🖨️ Print Record
+                    <tr key={r.id} className="font-semibold">
+                      <td className="px-4 py-3 text-slate-900">{r.roll_no || r.teacher_id}</td>
+                      <td className="px-4 py-3 text-slate-900">{r.full_name}</td>
+                      <td className="px-4 py-3 text-slate-800">{r.subject || r.semester}</td>
+                      <td className="px-4 py-3 text-slate-800">{r.admission_date || r.joining_date || 'N/A'}</td>
+                      <td className="px-4 py-3">
+                        <button onClick={() => { setPrintItem(r); setTimeout(() => window.print(), 100); }} className="cursor-pointer bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-xs hover:bg-emerald-700">
+                          Print Record
                         </button>
                       </td>
                     </tr>
-                  )) : <tr><td colSpan="5" style={{ textAlign: 'center' }}>No records found for {selectedYear} (Month: {selectedMonth}).</td></tr>}
+                  )) : <tr><td colSpan="5" className="p-8 text-center font-bold text-slate-400">No records found for {selectedYear} (Month: {selectedMonth}).</td></tr>}
                 </tbody>
               </table>
             </div>
           )}
         </div>
       )}
-
-      {/* Print Preview Modal */}
-      {printItem && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-          <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', width: '500px' }}>
-            <h2>PIASS ARCHIVE RECORD PRINT</h2>
-            <hr />
-            <p><b>ID / Roll No:</b> {printItem.roll_no || printItem.teacher_id}</p>
-            <p><b>Name:</b> {printItem.full_name}</p>
-            <p><b>Details:</b> {printItem.category || printItem.subject} ({printItem.semester || printItem.degree})</p>
-            <p><b>Date:</b> {printItem.admission_date || printItem.joining_date}</p>
-            <hr />
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => window.print()} style={{ background: '#16a34a', color: 'white', padding: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Print Now</button>
-              <button onClick={() => setPrintItem(null)} style={{ background: '#64748b', color: 'white', padding: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
+  );
+
+  return (
+    <>
+      <div className="screen-report-only h-full w-full">
+        <Background>{hubContent}</Background>
+      </div>
+      <Print title="PIASS Archive Record">{archivePrintContent}</Print>
+    </>
   );
 }

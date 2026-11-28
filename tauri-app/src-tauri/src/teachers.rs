@@ -21,7 +21,7 @@ pub struct Teacher {
 
 #[tauri::command]
 pub async fn register_teacher_backend(teacher: Teacher) -> Result<String, String> {
-    // .env file se credentials load karne ke liye
+   
     dotenvy::from_path("../.env").ok();
 
     let supabase_url = env::var("VITE_SUPABASE_URL")

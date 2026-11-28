@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../../services/supabaseClient';
+import Background from '../reports/Background';
 
 export default function StudentForm({ onStudentAdded }) {
   const [formData, setFormData] = useState({
@@ -19,21 +20,10 @@ export default function StudentForm({ onStudentAdded }) {
   const [message, setMessage] = useState('');
 
   const categories = [
-    "BS Nursing - BSN",
-    "Post RN",
-    "Doctor of Physiotherapy (DPT)",
-    "LHV Diploma",
-    "CMW Diploma",
-    "CNA Program",
-    "BS Computer Science",
-    "BS Information Tech",
-    "BBA (Business Admin)",
-    "BS English Literature",
-    "ADP Computer Science",
-    "ADP Information Tech",
-    "ADP Business Admin",
-    "ADP English",
-    "Lateral 5th Sem Entry"
+    "BS Nursing - BSN", "Post RN", "Doctor of Physiotherapy (DPT)", "LHV Diploma", 
+    "CMW Diploma", "CNA Program", "BS Computer Science", "BS Information Tech", 
+    "BBA (Business Admin)", "BS English Literature", "ADP Computer Science", 
+    "ADP Information Tech", "ADP Business Admin", "ADP English", "Lateral 5th Sem Entry"
   ];
 
   const semesters = [
@@ -45,12 +35,6 @@ export default function StudentForm({ onStudentAdded }) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleImageChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setImageFile(e.target.files[0]);
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -58,120 +42,103 @@ export default function StudentForm({ onStudentAdded }) {
 
     try {
       let imageUrl = '';
-
-      // 1. Upload Image to Supabase Storage if selected
       if (imageFile) {
         const fileExt = imageFile.name.split('.').pop();
         const fileName = `${Date.now()}_${Math.random()}.${fileExt}`;
-        const filePath = `${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('campus_images')
-          .upload(filePath, imageFile);
-
+        const { error: uploadError } = await supabase.storage.from('campus_images').upload(fileName, imageFile);
         if (uploadError) throw uploadError;
-
-        // Get Public URL
-        const { data: publicURLData } = supabase.storage
-          .from('campus_images')
-          .getPublicUrl(filePath);
-
+        const { data: publicURLData } = supabase.storage.from('campus_images').getPublicUrl(fileName);
         imageUrl = publicURLData.publicUrl;
       }
 
-      // 2. Insert Student into Database
-      const { error: insertError } = await supabase
-        .from('students')
-        .insert([{ ...formData, image_url: imageUrl }]);
-
+      const { error: insertError } = await supabase.from('students').insert([{ ...formData, image_url: imageUrl }]);
       if (insertError) throw insertError;
 
-      setMessage('✅ Student Admission & Image Upload Successful!');
+      setMessage('Student admission and record registered successfully.');
       setFormData({
-        roll_no: '',
-        full_name: '',
-        father_name: '',
-        category: 'BS Nursing - BSN',
-        semester: '1st Semester',
-        phone: '',
-        email: '',
-        admission_date: new Date().toISOString().split('T')[0],
-        status: 'Active'
+        roll_no: '', full_name: '', father_name: '', category: 'BS Nursing - BSN',
+        semester: '1st Semester', phone: '', email: '', admission_date: new Date().toISOString().split('T')[0], status: 'Active'
       });
       setImageFile(null);
       if (onStudentAdded) onStudentAdded();
     } catch (error) {
-      setMessage('❌ Error: ' + error.message);
+      setMessage('Error: ' + error.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: '20px', background: '#f9f9f9', borderRadius: '8px', maxWidth: '600px', margin: '20px auto', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-      <h2>🎓 New Student Admission (With Image & Semester)</h2>
-      {message && <p style={{ fontWeight: 'bold' }}>{message}</p>}
-      
-      <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '12px' }}>
-        <div>
-          <label>Roll Number / ID:</label>
-          <input type="text" name="roll_no" value={formData.roll_no} onChange={handleChange} required style={{ width: '100%', padding: '8px' }} />
-        </div>
+    <div className="screen-report-only h-full w-full">
+      <Background>
+        <div className="mx-auto max-w-3xl px-2">
+          <div className="rounded-2xl border border-slate-300 bg-white p-8 shadow-sm">
+            <header className="mb-6 border-b border-slate-200 pb-4">
+              <p className="text-xs font-extrabold uppercase tracking-wider text-[#078343]">PIASS College of Nursing Kasur</p>
+              <h1 className="text-2xl font-black text-[#062b55]">New Student Admission</h1>
+            </header>
 
-        <div>
-          <label>Full Name:</label>
-          <input type="text" name="full_name" value={formData.full_name} onChange={handleChange} required style={{ width: '100%', padding: '8px' }} />
-        </div>
+            {message && <p className="mb-4 rounded-xl bg-slate-100 p-3 text-sm font-bold text-[#062b55]">{message}</p>}
+            
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block text-xs font-black uppercase text-[#062b55] mb-1">Roll Number / ID:</label>
+                <input type="text" name="roll_no" value={formData.roll_no} onChange={handleChange} required className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800" />
+              </div>
 
-        <div>
-          <label>Father Name:</label>
-          <input type="text" name="father_name" value={formData.father_name} onChange={handleChange} required style={{ width: '100%', padding: '8px' }} />
-        </div>
+              <div>
+                <label className="block text-xs font-black uppercase text-[#062b55] mb-1">Full Name:</label>
+                <input type="text" name="full_name" value={formData.full_name} onChange={handleChange} required className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800" />
+              </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-          <div>
-            <label>Program / Category:</label>
-            <select name="category" value={formData.category} onChange={handleChange} style={{ width: '100%', padding: '8px' }}>
-              {categories.map((cat, index) => (
-                <option key={index} value={cat}>{cat}</option>
-              ))}
-            </select>
+              <div>
+                <label className="block text-xs font-black uppercase text-[#062b55] mb-1">Father Name:</label>
+                <input type="text" name="father_name" value={formData.father_name} onChange={handleChange} required className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-[#062b55] mb-1">Program / Category:</label>
+                <select name="category" value={formData.category} onChange={handleChange} className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800">
+                  {categories.map((cat, index) => <option key={index} value={cat}>{cat}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-[#062b55] mb-1">Current Semester:</label>
+                <select name="semester" value={formData.semester} onChange={handleChange} className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800">
+                  {semesters.map((sem, index) => <option key={index} value={sem}>{sem}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-[#062b55] mb-1">Phone Number:</label>
+                <input type="text" name="phone" value={formData.phone} onChange={handleChange} className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-[#062b55] mb-1">Email:</label>
+                <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-[#062b55] mb-1">Admission Date:</label>
+                <input type="date" name="admission_date" value={formData.admission_date} onChange={handleChange} className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800" />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-black uppercase text-[#062b55] mb-1">Student Photo:</label>
+                <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} className="w-full rounded-xl border border-slate-300 bg-slate-50 p-2.5 text-sm font-semibold text-slate-800" />
+              </div>
+
+              <div className="sm:col-span-2 mt-4">
+                <button type="submit" disabled={loading} className="w-full cursor-pointer rounded-xl bg-[#062b55] px-6 py-3.5 text-sm font-black text-white shadow-sm transition hover:bg-[#0b3e78]">
+                  {loading ? 'Processing Registration...' : 'Complete Student Admission'}
+                </button>
+              </div>
+            </form>
           </div>
-          <div>
-            <label>Current Semester:</label>
-            <select name="semester" value={formData.semester} onChange={handleChange} style={{ width: '100%', padding: '8px' }}>
-              {semesters.map((sem, index) => (
-                <option key={index} value={sem}>{sem}</option>
-              ))}
-            </select>
-          </div>
         </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-          <div>
-            <label>Phone Number:</label>
-            <input type="text" name="phone" value={formData.phone} onChange={handleChange} style={{ width: '100%', padding: '8px' }} />
-          </div>
-          <div>
-            <label>Email:</label>
-            <input type="email" name="email" value={formData.email} onChange={handleChange} style={{ width: '100%', padding: '8px' }} />
-          </div>
-        </div>
-
-        <div>
-          <label>Student Passport Size Photo:</label>
-          <input type="file" accept="image/*" onChange={handleImageChange} style={{ width: '100%', padding: '6px', background: '#fff' }} />
-        </div>
-
-        <div>
-          <label>Admission Date:</label>
-          <input type="date" name="admission_date" value={formData.admission_date} onChange={handleChange} style={{ width: '100%', padding: '8px' }} />
-        </div>
-
-        <button type="submit" disabled={loading} style={{ background: '#0f766e', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-          {loading ? 'Uploading & Registering...' : 'Register Student'}
-        </button>
-      </form>
+      </Background>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getAllStudents } from './studentRecordService';
 import StudentProfileModal from './StudentProfileModal';
+import Background from '../reports/Background';
 
 export default function StudentList() {
   const [students, setStudents] = useState([]);
@@ -27,21 +28,10 @@ export default function StudentList() {
   }, []);
 
   const programs = [
-    "BS Nursing - BSN",
-    "Post RN",
-    "Doctor of Physiotherapy (DPT)",
-    "LHV Diploma",
-    "CMW Diploma",
-    "CNA Program",
-    "BS Computer Science",
-    "BS Information Tech",
-    "BBA (Business Admin)",
-    "BS English Literature",
-    "ADP Computer Science",
-    "ADP Information Tech",
-    "ADP Business Admin",
-    "ADP English",
-    "Lateral 5th Sem Entry"
+    "BS Nursing - BSN", "Post RN", "Doctor of Physiotherapy (DPT)", "LHV Diploma", 
+    "CMW Diploma", "CNA Program", "BS Computer Science", "BS Information Tech", 
+    "BBA (Business Admin)", "BS English Literature", "ADP Computer Science", 
+    "ADP Information Tech", "ADP Business Admin", "ADP English", "Lateral 5th Sem Entry"
   ];
 
   const semestersList = [
@@ -49,7 +39,6 @@ export default function StudentList() {
     "5th Semester", "6th Semester", "7th Semester", "8th Semester"
   ];
 
-  // Filter logic: Global search OR Program -> Semester hierarchy
   const filteredStudents = students.filter(s => {
     if (search) {
       return s.full_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -60,59 +49,58 @@ export default function StudentList() {
     return matchesProgram && matchesSemester;
   });
 
-  return (
-    <div style={{ padding: '20px', maxWidth: '1100px', margin: '0 auto', fontFamily: 'Arial' }}>
-      <h2>📋 Student Records & Program Directory</h2>
+  const directoryContent = (
+    <div className="text-slate-900 font-medium">
+      <header className="mb-6 border-b border-slate-200 pb-4">
+        <p className="text-xs font-extrabold uppercase tracking-wider text-[#078343]">PIASS College of Nursing Kasur</p>
+        <h1 className="text-2xl font-black text-[#062b55]">Student Records & Program Directory</h1>
+      </header>
 
-      {/* Navigation Breadcrumb / Back Buttons */}
-      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
+      <div className="mb-6 flex gap-3">
         {selectedSemester && (
-          <button onClick={() => setSelectedSemester(null)} style={{ background: '#64748b', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+          <button onClick={() => setSelectedSemester(null)} className="cursor-pointer rounded-xl bg-slate-600 px-4 py-2 text-sm font-bold text-white shadow-xs hover:bg-slate-700">
             ← Back to Semesters
           </button>
         )}
         {selectedProgram && !selectedSemester && (
-          <button onClick={() => setSelectedProgram(null)} style={{ background: '#64748b', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+          <button onClick={() => setSelectedProgram(null)} className="cursor-pointer rounded-xl bg-slate-600 px-4 py-2 text-sm font-bold text-white shadow-xs hover:bg-slate-700">
             ← Back to Programs
           </button>
         )}
       </div>
 
-      {/* Header Info based on selection */}
       {selectedProgram && (
-        <h3 style={{ color: '#0f766e', marginBottom: '15px' }}>
+        <h3 className="text-lg font-black text-[#062b55] mb-4">
           Program: {selectedProgram} {selectedSemester ? `> ${selectedSemester}` : ''}
         </h3>
       )}
 
-      {/* GLOBAL SEARCH BAR */}
       <input 
         type="text" 
         placeholder="Global Search by Roll Number or Name across all programs..." 
         value={search} 
         onChange={(e) => { setSearch(e.target.value); setSelectedProgram(null); setSelectedSemester(null); }} 
-        style={{ width: '100%', padding: '10px', marginBottom: '20px', borderRadius: '4px', border: '1px solid #ccc' }}
+        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold mb-6 shadow-xs"
       />
 
       {loading ? (
-        <p>Loading students data...</p>
+        <p className="font-bold">Loading students data...</p>
       ) : (
         <>
-          {/* STEP 1: SHOW PROGRAMS DIRECTORY (If no program selected and no search) */}
           {!selectedProgram && !search && (
             <div>
-              <p style={{ color: '#555', marginBottom: '15px' }}>Select a Program/Department:</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
+              <p className="text-sm font-bold text-slate-700 mb-4">Select a Program / Department:</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {programs.map((prog, index) => {
                   const count = students.filter(s => s.category === prog).length;
                   return (
                     <div 
                       key={index} 
                       onClick={() => { setSelectedProgram(prog); setSelectedSemester(null); }}
-                      style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '20px', borderRadius: '8px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: '0.2s' }}
+                      className="cursor-pointer rounded-2xl border border-slate-300 bg-white p-5 shadow-xs transition hover:border-[#078343]"
                     >
-                      <h4 style={{ margin: '0 0 10px 0', color: '#0f766e' }}>{prog}</h4>
-                      <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>Total Enrolled: <b>{count}</b></p>
+                      <h4 className="text-base font-black text-[#062b55] mb-2">{prog}</h4>
+                      <p className="text-xs font-semibold text-slate-500">Enrolled Students: <span className="font-bold text-slate-800">{count}</span></p>
                     </div>
                   );
                 })}
@@ -120,21 +108,20 @@ export default function StudentList() {
             </div>
           )}
 
-          {/* STEP 2: SHOW SEMESTERS LIST (If program selected, but semester NOT selected) */}
           {selectedProgram && !selectedSemester && !search && (
             <div>
-              <p style={{ color: '#555', marginBottom: '15px' }}>Select a Semester:</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' }}>
+              <p className="text-sm font-bold text-slate-700 mb-4">Select a Semester:</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {semestersList.map((sem, index) => {
                   const count = students.filter(s => s.category === selectedProgram && s.semester === sem).length;
                   return (
                     <div 
                       key={index} 
                       onClick={() => setSelectedSemester(sem)}
-                      style={{ background: '#f0fdf4', border: '1px solid #86efac', padding: '20px', borderRadius: '8px', cursor: 'pointer', textAlign: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
+                      className="cursor-pointer rounded-2xl border border-emerald-300 bg-emerald-50/50 p-5 text-center shadow-xs transition hover:bg-emerald-100"
                     >
-                      <h4 style={{ margin: '0 0 10px 0', color: '#166534' }}>{sem}</h4>
-                      <p style={{ margin: 0, color: '#15803d', fontSize: '0.85rem' }}>Students: <b>{count}</b></p>
+                      <h4 className="text-base font-black text-emerald-900 mb-1">{sem}</h4>
+                      <p className="text-xs font-bold text-emerald-700">Students: {count}</p>
                     </div>
                   );
                 })}
@@ -142,48 +129,47 @@ export default function StudentList() {
             </div>
           )}
 
-          {/* STEP 3: SHOW STUDENTS TABLE (If Semester is selected OR Global Search is active) */}
           {(selectedSemester || search) && (
-            <div style={{ background: '#fff', padding: '15px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-              <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: '#f1f5f9' }}>
-                    <th>Photo</th>
-                    <th>Roll No</th>
-                    <th>Name</th>
-                    <th>Father Name</th>
-                    <th>Semester</th>
-                    <th>Phone</th>
-                    <th>Status</th>
+            <div className="overflow-x-auto rounded-2xl border border-slate-300 bg-white shadow-xs">
+              <table className="w-full border-collapse text-left text-sm">
+                <thead className="bg-[#062b55] text-white">
+                  <tr>
+                    <th className="px-4 py-3 font-bold text-center">Photo</th>
+                    <th className="px-4 py-3 font-bold">Roll No</th>
+                    <th className="px-4 py-3 font-bold">Name</th>
+                    <th className="px-4 py-3 font-bold">Father Name</th>
+                    <th className="px-4 py-3 font-bold">Semester</th>
+                    <th className="px-4 py-3 font-bold">Phone</th>
+                    <th className="px-4 py-3 font-bold">Status</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-200">
                   {filteredStudents.length > 0 ? (
                     filteredStudents.map((s) => (
                       <tr 
                         key={s.id} 
                         onClick={() => setSelectedStudent(s)}
-                        style={{ cursor: 'pointer', background: '#fff' }}
-                        title="Click to view full profile & fee history"
+                        className="cursor-pointer transition hover:bg-slate-50 font-semibold"
+                        title="Click to view full profile"
                       >
-                        <td style={{ textAlign: 'center' }}>
+                        <td className="px-4 py-3 text-center">
                           {s.image_url ? (
-                            <img src={s.image_url} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '50%' }} />
+                            <img src={s.image_url} alt="" className="w-10 h-10 object-cover rounded-full mx-auto border border-slate-300" />
                           ) : (
-                            <div style={{ width: '40px', height: '40px', background: '#ccc', borderRadius: '50%', margin: '0 auto' }}></div>
+                            <div className="w-10 h-10 bg-slate-200 rounded-full mx-auto flex items-center justify-center text-[10px] font-bold text-slate-500">No Pic</div>
                           )}
                         </td>
-                        <td><b>{s.roll_no}</b></td>
-                        <td>{s.full_name}</td>
-                        <td>{s.father_name}</td>
-                        <td><span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold' }}>{s.semester}</span></td>
-                        <td>{s.phone}</td>
-                        <td><span style={{ color: s.status === 'Active' ? 'green' : 'red', fontWeight: 'bold' }}>{s.status}</span></td>
+                        <td className="px-4 py-3 text-slate-900">{s.roll_no}</td>
+                        <td className="px-4 py-3 text-slate-900">{s.full_name}</td>
+                        <td className="px-4 py-3 text-slate-800">{s.father_name}</td>
+                        <td className="px-4 py-3"><span className="rounded-xl bg-sky-50 px-2.5 py-1 text-xs font-bold text-sky-800 border border-sky-200">{s.semester}</span></td>
+                        <td className="px-4 py-3 text-slate-800">{s.phone || '—'}</td>
+                        <td className="px-4 py-3"><span className={s.status === 'Active' ? 'text-emerald-700 font-bold' : 'text-red-600 font-bold'}>{s.status}</span></td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No students found matching this criteria.</td>
+                      <td colSpan="7" className="p-8 text-center font-bold text-slate-400">No students found matching this criteria.</td>
                     </tr>
                   )}
                 </tbody>
@@ -193,7 +179,6 @@ export default function StudentList() {
         </>
       )}
 
-      {/* STUDENT PROFILE POPUP MODAL */}
       {selectedStudent && (
         <StudentProfileModal 
           student={selectedStudent} 
@@ -203,8 +188,10 @@ export default function StudentList() {
       )}
     </div>
   );
+
+  return (
+    <div className="screen-report-only h-full w-full">
+      <Background>{directoryContent}</Background>
+    </div>
+  );
 }
-
-
-
-

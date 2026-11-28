@@ -1,31 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabaseClient';
+import Background from '../reports/Background';
+import Print from '../reports/Print';
 
 export default function AttendanceHub() {
-  const [mainTab, setMainTab] = useState('menu'); // 'menu', 'mark-student', 'mark-teacher', 'view-absent', 'past'
-  const [subTarget, setSubTarget] = useState(null); // 'student' or 'teacher' for absent view
+  const [mainTab, setMainTab] = useState('menu'); 
+  const [subTarget, setSubTarget] = useState(null); 
   
-  // Marking States
   const [selectedProgram, setSelectedProgram] = useState(null);
   const [selectedSemester, setSelectedSemester] = useState(null);
   const [studentsList, setStudentsList] = useState([]);
   const [teachersList, setTeachersList] = useState([]);
-  const [attendanceState, setAttendanceState] = useState({}); // { person_id: 'Present' / 'Absent' }
+  const [attendanceState, setAttendanceState] = useState({}); 
   const [loading, setLoading] = useState(false);
 
-  // View Absent States
   const [absentList, setAbsentList] = useState([]);
-  const [absentProgram, setAbsentProgram] = useState(null);
-
-  // Past Records States
   const [pastDate, setPastDate] = useState(new Date().toISOString().split('T')[0]);
   const [pastRecords, setPastRecords] = useState([]);
 
-  // Holiday / Weekend Check
   const todayObj = new Date();
-  const dayOfWeek = todayObj.getDay(); // 0 = Sunday, 6 = Saturday
+  const dayOfWeek = todayObj.getDay(); 
   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-
   const currentDateStr = todayObj.toISOString().split('T')[0];
 
   const programs = [
@@ -40,7 +35,6 @@ export default function AttendanceHub() {
     "5th Semester", "6th Semester", "7th Semester", "8th Semester"
   ];
 
-  // Fetch students for marking
   const fetchStudentsForAttendance = async (prog, sem) => {
     try {
       setLoading(true);
@@ -52,7 +46,6 @@ export default function AttendanceHub() {
       if (error) throw error;
       setStudentsList(data || []);
       
-      // Default all to Present
       let initial = {};
       (data || []).forEach(s => { initial[s.roll_no] = 'Present'; });
       setAttendanceState(initial);
@@ -63,7 +56,6 @@ export default function AttendanceHub() {
     }
   };
 
-  // Fetch teachers for marking
   const fetchTeachersForAttendance = async () => {
     try {
       setLoading(true);
@@ -81,7 +73,6 @@ export default function AttendanceHub() {
     }
   };
 
-  // Save Attendance
   const handleSaveAttendance = async (type) => {
     try {
       setLoading(true);
@@ -109,7 +100,6 @@ export default function AttendanceHub() {
         });
       }
 
-      // First delete if already marked today to prevent duplicates, then insert
       for (let rec of recordsToSave) {
         await supabase.from('attendance_records').delete().eq('person_id', rec.person_id).eq('attendance_date', currentDateStr);
       }
@@ -117,30 +107,25 @@ export default function AttendanceHub() {
       const { error } = await supabase.from('attendance_records').insert(recordsToSave);
       if (error) throw error;
 
-      alert('✅ Attendance successfully saved for today!');
+      alert('Attendance successfully saved for today.');
     } catch (err) {
-      alert('❌ Error saving attendance: ' + err.message);
+      alert('Error saving attendance: ' + err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch Today's Absentees
-  const fetchTodayAbsents = async (type, prog = null) => {
+  const fetchTodayAbsents = async (type) => {
     try {
       setLoading(true);
       let query = supabase.from('attendance_records').select('*').eq('attendance_date', currentDateStr).eq('status', 'Absent');
-      if (type === 'student' && prog) {
-        query = query.ilike('category', `%${prog}%`);
-      }
       const { data, error } = await query;
       if (error) throw error;
       
-      // If teacher view, filter records where category is 'Staff / Teacher'
       if (type === 'teacher') {
         setAbsentList((data || []).filter(r => r.category === 'Staff / Teacher'));
       } else {
-        setAbsentList(data || []);
+        setAbsentList((data || []).filter(r => r.category !== 'Staff / Teacher'));
       }
     } catch (err) {
       console.error(err);
@@ -149,7 +134,6 @@ export default function AttendanceHub() {
     }
   };
 
-  // Fetch Past Attendance by Date
   const fetchPastRecords = async (dateVal) => {
     try {
       setLoading(true);
@@ -163,43 +147,98 @@ export default function AttendanceHub() {
     }
   };
 
-  return (
-    <div style={{ padding: '20px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'Arial' }}>
-      <h2>📌 Campus Attendance Management System</h2>
-      <p style={{ color: '#64748b' }}>Date: <b>{currentDateStr}</b> {isWeekend && <span style={{ color: 'red', fontWeight: 'bold' }}>⚠️ (Weekend / Holiday Notice)</span>}</p>
+  // Professional A4 Printable Layout matching Reports standard
+  const absentPrintContent = (
+    <div className="text-slate-900 font-medium">
+      <header className="mb-6 border-b-2 border-slate-300 pb-4 text-center">
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-[#078343]">
+          Official Absent Statement
+        </p>
+        <h2 className="mt-1 text-2xl font-black text-[#062b55]">
+          {subTarget === 'student' ? 'Student' : 'Teacher'} Absent Report — {currentDateStr}
+        </h2>
+        <p className="text-xs font-semibold text-slate-500 mt-1">
+          Generated: {new Date().toLocaleString('en-PK')}
+        </p>
+      </header>
 
-      {/* MAIN MENU BUTTONS */}
+      <div className="overflow-x-auto rounded-xl border border-slate-300 bg-white shadow-sm">
+        <table className="w-full border-collapse text-left text-sm">
+          <thead className="bg-[#062b55] text-white">
+            <tr>
+              <th className="px-5 py-3.5 font-bold tracking-wide">ID / Roll No</th>
+              <th className="px-5 py-3.5 font-bold tracking-wide">Name</th>
+              <th className="px-5 py-3.5 font-bold tracking-wide">Category / Dept</th>
+              <th className="px-5 py-3.5 font-bold tracking-wide">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {absentList.length > 0 ? (
+              absentList.map((a) => (
+                <tr key={a.id || Math.random()} className="font-semibold">
+                  <td className="px-5 py-3.5 text-slate-800">{a.person_id}</td>
+                  <td className="px-5 py-3.5 text-slate-800">{a.name}</td>
+                  <td className="px-5 py-3.5 text-slate-800">{a.category}</td>
+                  <td className="px-5 py-3.5 text-red-600 font-bold">{a.status}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="4" className="p-8 text-center font-bold text-slate-400 text-sm">
+                  No absent records found for today.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  const hubContent = (
+    <div className="text-slate-900 font-medium">
+      <header className="mb-6 border-b border-slate-200 pb-4">
+        <p className="text-xs font-extrabold uppercase tracking-wider text-[#078343]">PIASS College of Nursing Kasur</p>
+        <h1 className="text-2xl font-black text-[#062b55]">Attendance Management System</h1>
+        <p className="text-xs font-semibold text-slate-500 mt-1">
+          Date: {currentDateStr} {isWeekend && <span className="text-red-600 font-bold">(Weekend Notice)</span>}
+        </p>
+      </header>
+
       {mainTab === 'menu' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '30px' }}>
-          <div onClick={() => setMainTab('mark-student')} style={{ background: '#0f766e', color: 'white', padding: '30px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 'bold' }}>
-            🎓 Mark Student Attendance
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-6">
+          <div onClick={() => setMainTab('mark-student')} className="cursor-pointer rounded-2xl border border-slate-300 bg-white p-6 shadow-sm transition hover:border-[#062b55]">
+            <h3 className="text-lg font-black text-[#062b55]">Mark Student Attendance</h3>
+            <p className="text-xs text-slate-500 mt-1">Program and semester-wise class attendance entry.</p>
           </div>
-          <div onClick={() => { setMainTab('mark-teacher'); fetchTeachersForAttendance(); }} style={{ background: '#2563eb', color: 'white', padding: '30px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 'bold' }}>
-            👨‍🏫 Mark Teacher Attendance
+          <div onClick={() => { setMainTab('mark-teacher'); fetchTeachersForAttendance(); }} className="cursor-pointer rounded-2xl border border-slate-300 bg-white p-6 shadow-sm transition hover:border-[#062b55]">
+            <h3 className="text-lg font-black text-[#062b55]">Mark Teacher Attendance</h3>
+            <p className="text-xs text-slate-500 mt-1">Daily faculty and staff attendance tracker.</p>
           </div>
-          <div onClick={() => setMainTab('view-absent')} style={{ background: '#ca8a04', color: 'white', padding: '30px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 'bold' }}>
-            📊 View Today's Absents & Print
+          <div onClick={() => setMainTab('view-absent')} className="cursor-pointer rounded-2xl border border-slate-300 bg-white p-6 shadow-sm transition hover:border-[#062b55]">
+            <h3 className="text-lg font-black text-[#062b55]">View Today's Absents</h3>
+            <p className="text-xs text-slate-500 mt-1">Generate official absent lists and print reports.</p>
           </div>
-          <div onClick={() => { setMainTab('past'); fetchPastRecords(pastDate); }} style={{ background: '#475569', color: 'white', padding: '30px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 'bold' }}>
-            🗂️ Past Attendance History
+          <div onClick={() => { setMainTab('past'); fetchPastRecords(pastDate); }} className="cursor-pointer rounded-2xl border border-slate-300 bg-white p-6 shadow-sm transition hover:border-[#062b55]">
+            <h3 className="text-lg font-black text-[#062b55]">Past Attendance History</h3>
+            <p className="text-xs text-slate-500 mt-1">Audit past attendance logs by custom dates.</p>
           </div>
         </div>
       )}
 
       {mainTab !== 'menu' && (
-        <button onClick={() => { setMainTab('menu'); setSelectedProgram(null); setSelectedSemester(null); setSubTarget(null); }} style={{ background: '#64748b', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginBottom: '20px' }}>
+        <button onClick={() => { setMainTab('menu'); setSelectedProgram(null); setSelectedSemester(null); setSubTarget(null); }} className="mb-6 cursor-pointer rounded-xl bg-slate-600 px-4 py-2 text-sm font-bold text-white shadow-xs hover:bg-slate-700">
           ← Back to Attendance Menu
         </button>
       )}
 
-      {/* 1. MARK STUDENT ATTENDANCE FLOW */}
       {mainTab === 'mark-student' && !selectedProgram && (
         <div>
-          <h3>Select Program for Student Attendance:</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginTop: '15px' }}>
+          <h3 className="text-base font-black text-[#062b55] mb-4">Select Program for Student Attendance:</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {programs.map((p, i) => (
-              <div key={i} onClick={() => setSelectedProgram(p)} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '15px', borderRadius: '6px', cursor: 'pointer' }}>
-                <h4 style={{ margin: 0, color: '#0f766e' }}>{p}</h4>
+              <div key={i} onClick={() => setSelectedProgram(p)} className="cursor-pointer rounded-xl border border-slate-300 bg-white p-4 font-bold text-slate-800 shadow-xs hover:border-[#078343]">
+                {p}
               </div>
             ))}
           </div>
@@ -208,12 +247,12 @@ export default function AttendanceHub() {
 
       {mainTab === 'mark-student' && selectedProgram && !selectedSemester && (
         <div>
-          <button onClick={() => setSelectedProgram(null)} style={{ background: '#64748b', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginBottom: '15px' }}>← Change Program</button>
-          <h3>Select Semester for {selectedProgram}:</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginTop: '15px' }}>
+          <button onClick={() => setSelectedProgram(null)} className="mb-4 cursor-pointer rounded-lg bg-slate-500 px-3 py-1.5 text-xs font-bold text-white">← Change Program</button>
+          <h3 className="text-base font-black text-[#062b55] mb-4">Select Semester for {selectedProgram}:</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {semesters.map((sem, i) => (
-              <div key={i} onClick={() => { setSelectedSemester(sem); fetchStudentsForAttendance(selectedProgram, sem); }} style={{ background: '#f0fdf4', border: '1px solid #86efac', padding: '20px', borderRadius: '8px', cursor: 'pointer', textAlign: 'center' }}>
-                <h4 style={{ margin: 0, color: '#166534' }}>{sem}</h4>
+              <div key={i} onClick={() => { setSelectedSemester(sem); fetchStudentsForAttendance(selectedProgram, sem); }} className="cursor-pointer rounded-xl border border-emerald-300 bg-emerald-50/50 p-4 text-center font-bold text-emerald-900 shadow-xs hover:bg-emerald-100">
+                {sem}
               </div>
             ))}
           </div>
@@ -222,25 +261,29 @@ export default function AttendanceHub() {
 
       {mainTab === 'mark-student' && selectedProgram && selectedSemester && (
         <div>
-          <button onClick={() => setSelectedSemester(null)} style={{ background: '#64748b', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginBottom: '15px' }}>← Change Semester</button>
-          <h3>Marking Attendance: {selectedProgram} ({selectedSemester})</h3>
+          <button onClick={() => setSelectedSemester(null)} className="mb-4 cursor-pointer rounded-lg bg-slate-500 px-3 py-1.5 text-xs font-bold text-white">← Change Semester</button>
+          <h3 className="text-base font-black text-[#062b55] mb-4">Marking Class: {selectedProgram} ({selectedSemester})</h3>
           
-          {loading ? <p>Loading students...</p> : (
-            <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-              <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
-                <thead>
-                  <tr style={{ background: '#f1f5f9' }}><th>Roll No</th><th>Student Name</th><th>Attendance Status</th></tr>
+          {loading ? <p className="font-bold">Loading students...</p> : (
+            <div className="rounded-2xl border border-slate-300 bg-white p-5 shadow-xs">
+              <table className="w-full border-collapse text-left text-sm mb-5">
+                <thead className="bg-[#062b55] text-white">
+                  <tr>
+                    <th className="px-4 py-3 font-bold">Roll No</th>
+                    <th className="px-4 py-3 font-bold">Student Name</th>
+                    <th className="px-4 py-3 font-bold">Status</th>
+                  </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-200">
                   {studentsList.map(s => (
-                    <tr key={s.id}>
-                      <td><b>{s.roll_no}</b></td>
-                      <td>{s.full_name}</td>
-                      <td>
+                    <tr key={s.id} className="font-semibold">
+                      <td className="px-4 py-3">{s.roll_no}</td>
+                      <td className="px-4 py-3">{s.full_name}</td>
+                      <td className="px-4 py-3">
                         <select 
                           value={attendanceState[s.roll_no] || 'Present'} 
                           onChange={(e) => setAttendanceState({...attendanceState, [s.roll_no]: e.target.value})}
-                          style={{ padding: '6px', fontWeight: 'bold', color: attendanceState[s.roll_no] === 'Absent' ? 'red' : 'green' }}
+                          className={`rounded-xl border px-3 py-1.5 text-sm font-bold ${attendanceState[s.roll_no] === 'Absent' ? 'text-red-600 border-red-300 bg-red-50' : 'text-emerald-700 border-emerald-300 bg-emerald-50'}`}
                         >
                           <option value="Present">Present</option>
                           <option value="Absent">Absent</option>
@@ -250,33 +293,37 @@ export default function AttendanceHub() {
                   ))}
                 </tbody>
               </table>
-              <button onClick={() => handleSaveAttendance('student')} style={{ background: '#16a34a', color: 'white', padding: '12px 25px', border: 'none', fontWeight: 'bold', cursor: 'pointer', borderRadius: '6px' }}>Save Class Attendance</button>
+              <button onClick={() => handleSaveAttendance('student')} className="cursor-pointer rounded-xl bg-emerald-600 px-6 py-3 font-black text-white shadow-sm hover:bg-emerald-700">Save Class Attendance</button>
             </div>
           )}
         </div>
       )}
 
-      {/* 2. MARK TEACHER ATTENDANCE */}
       {mainTab === 'mark-teacher' && (
         <div>
-          <h3>Mark Staff / Teacher Attendance ({currentDateStr})</h3>
-          {loading ? <p>Loading teachers...</p> : (
-            <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-              <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
-                <thead>
-                  <tr style={{ background: '#f1f5f9' }}><th>Teacher ID</th><th>Teacher Name</th><th>Subject</th><th>Attendance Status</th></tr>
+          <h3 className="text-base font-black text-[#062b55] mb-4">Mark Staff / Teacher Attendance ({currentDateStr})</h3>
+          {loading ? <p className="font-bold">Loading teachers...</p> : (
+            <div className="rounded-2xl border border-slate-300 bg-white p-5 shadow-xs">
+              <table className="w-full border-collapse text-left text-sm mb-5">
+                <thead className="bg-[#062b55] text-white">
+                  <tr>
+                    <th className="px-4 py-3 font-bold">Teacher ID</th>
+                    <th className="px-4 py-3 font-bold">Teacher Name</th>
+                    <th className="px-4 py-3 font-bold">Subject</th>
+                    <th className="px-4 py-3 font-bold">Status</th>
+                  </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-200">
                   {teachersList.map(t => (
-                    <tr key={t.id}>
-                      <td><b>{t.teacher_id}</b></td>
-                      <td>{t.full_name}</td>
-                      <td>{t.subject}</td>
-                      <td>
+                    <tr key={t.id} className="font-semibold">
+                      <td className="px-4 py-3">{t.teacher_id}</td>
+                      <td className="px-4 py-3">{t.full_name}</td>
+                      <td className="px-4 py-3">{t.subject}</td>
+                      <td className="px-4 py-3">
                         <select 
                           value={attendanceState[t.teacher_id] || 'Present'} 
                           onChange={(e) => setAttendanceState({...attendanceState, [t.teacher_id]: e.target.value})}
-                          style={{ padding: '6px', fontWeight: 'bold', color: attendanceState[t.teacher_id] === 'Absent' ? 'red' : 'green' }}
+                          className={`rounded-xl border px-3 py-1.5 text-sm font-bold ${attendanceState[t.teacher_id] === 'Absent' ? 'text-red-600 border-red-300 bg-red-50' : 'text-emerald-700 border-emerald-300 bg-emerald-50'}`}
                         >
                           <option value="Present">Present</option>
                           <option value="Absent">Absent</option>
@@ -286,79 +333,99 @@ export default function AttendanceHub() {
                   ))}
                 </tbody>
               </table>
-              <button onClick={() => handleSaveAttendance('teacher')} style={{ background: '#16a34a', color: 'white', padding: '12px 25px', border: 'none', fontWeight: 'bold', cursor: 'pointer', borderRadius: '6px' }}>Save Teacher Attendance</button>
+              <button onClick={() => handleSaveAttendance('teacher')} className="cursor-pointer rounded-xl bg-emerald-600 px-6 py-3 font-black text-white shadow-sm hover:bg-emerald-700">Save Teacher Attendance</button>
             </div>
           )}
         </div>
       )}
 
-      {/* 3. VIEW TODAY ABSENT STUDENTS / TEACHERS */}
       {mainTab === 'view-absent' && !subTarget && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
-          <div onClick={() => { setSubTarget('student'); fetchTodayAbsents('student'); }} style={{ background: '#fee2e2', border: '2px solid #dc2626', padding: '30px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', fontWeight: 'bold', color: '#991b1b' }}>
-            🔴 View Today's Absent Students & Print
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+          <div onClick={() => { setSubTarget('student'); fetchTodayAbsents('student'); }} className="cursor-pointer rounded-2xl border-2 border-red-500 bg-red-50/50 p-6 text-center font-black text-red-700 shadow-sm transition hover:bg-red-100">
+            View Today's Absent Students & Print
           </div>
-          <div onClick={() => { setSubTarget('teacher'); fetchTodayAbsents('teacher'); }} style={{ background: '#fef3c7', border: '2px solid #d97706', padding: '30px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', fontWeight: 'bold', color: '#b45309' }}>
-            🟠 View Today's Absent Teachers & Print
+          <div onClick={() => { setSubTarget('teacher'); fetchTodayAbsents('teacher'); }} className="cursor-pointer rounded-2xl border-2 border-amber-500 bg-amber-50/50 p-6 text-center font-black text-amber-800 shadow-sm transition hover:bg-amber-100">
+            View Today's Absent Teachers & Print
           </div>
         </div>
       )}
 
       {mainTab === 'view-absent' && subTarget && (
         <div>
-          <button onClick={() => setSubTarget(null)} style={{ background: '#64748b', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginBottom: '15px' }}>← Back</button>
-          <h3>Today's Absent {subTarget === 'student' ? 'Students' : 'Teachers'} ({currentDateStr})</h3>
+          <button onClick={() => setSubTarget(null)} className="mb-4 cursor-pointer rounded-lg bg-slate-500 px-3 py-1.5 text-xs font-bold text-white">← Back</button>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-base font-black text-[#062b55]">Today's Absent {subTarget === 'student' ? 'Students' : 'Teachers'} ({currentDateStr})</h3>
+            <button onClick={() => window.print()} className="cursor-pointer rounded-xl bg-[#062b55] px-4 py-2 text-sm font-bold text-white shadow-sm">Print Absent Report</button>
+          </div>
           
-          <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-            <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
-              <thead>
-                <tr style={{ background: '#f1f5f9' }}><th>ID / Roll No</th><th>Name</th><th>Category / Dept</th><th>Status</th></tr>
+          <div className="rounded-2xl border border-slate-300 bg-white p-5 shadow-xs">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead className="bg-[#062b55] text-white">
+                <tr>
+                  <th className="px-4 py-3 font-bold">ID / Roll No</th>
+                  <th className="px-4 py-3 font-bold">Name</th>
+                  <th className="px-4 py-3 font-bold">Category / Dept</th>
+                  <th className="px-4 py-3 font-bold">Status</th>
+                </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-200">
                 {absentList.length > 0 ? absentList.map(a => (
-                  <tr key={a.id}>
-                    <td><b>{a.person_id}</b></td>
-                    <td>{a.name}</td>
-                    <td>{a.category}</td>
-                    <td style={{ color: 'red', fontWeight: 'bold' }}>{a.status}</td>
+                  <tr key={a.id} className="font-semibold">
+                    <td className="px-4 py-3">{a.person_id}</td>
+                    <td className="px-4 py-3">{a.name}</td>
+                    <td className="px-4 py-3">{a.category}</td>
+                    <td className="px-4 py-3 text-red-600 font-bold">{a.status}</td>
                   </tr>
-                )) : <tr><td colSpan="4" style={{ textAlign: 'center' }}>No absent records found for today! 🎉</td></tr>}
+                )) : <tr><td colSpan="4" className="p-6 text-center font-bold text-slate-400">No absent records found for today.</td></tr>}
               </tbody>
             </table>
-            <button onClick={() => window.print()} style={{ background: '#16a34a', color: 'white', padding: '10px 20px', border: 'none', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px' }}>🖨️ Print Absent Report</button>
           </div>
         </div>
       )}
 
-      {/* 4. PAST ATTENDANCE HISTORY */}
       {mainTab === 'past' && (
         <div>
-          <h3>🗂️ Past Attendance Records</h3>
-          <div style={{ display: 'flex', gap: '10px', margin: '15px 0' }}>
-            <input type="date" value={pastDate} onChange={(e) => setPastDate(e.target.value)} style={{ padding: '8px' }} />
-            <button onClick={() => fetchPastRecords(pastDate)} style={{ background: '#0f766e', color: 'white', border: 'none', padding: '8px 15px', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>Fetch Attendance</button>
+          <h3 className="text-base font-black text-[#062b55] mb-4">Past Attendance Records</h3>
+          <div className="flex gap-3 mb-5">
+            <input type="date" value={pastDate} onChange={(e) => setPastDate(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-800" />
+            <button onClick={() => fetchPastRecords(pastDate)} className="cursor-pointer rounded-xl bg-[#062b55] px-5 py-2 text-sm font-bold text-white shadow-sm">Fetch Attendance</button>
           </div>
 
-          <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-            <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: '#f1f5f9' }}><th>ID / Roll No</th><th>Name</th><th>Category</th><th>Date</th><th>Status</th></tr>
+          <div className="rounded-2xl border border-slate-300 bg-white p-5 shadow-xs">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead className="bg-[#062b55] text-white">
+                <tr>
+                  <th className="px-4 py-3 font-bold">ID / Roll No</th>
+                  <th className="px-4 py-3 font-bold">Name</th>
+                  <th className="px-4 py-3 font-bold">Category</th>
+                  <th className="px-4 py-3 font-bold">Date</th>
+                  <th className="px-4 py-3 font-bold">Status</th>
+                </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-200">
                 {pastRecords.length > 0 ? pastRecords.map(p => (
-                  <tr key={p.id}>
-                    <td><b>{p.person_id}</b></td>
-                    <td>{p.name}</td>
-                    <td>{p.category}</td>
-                    <td>{p.attendance_date}</td>
-                    <td style={{ color: p.status === 'Present' ? 'green' : 'red', fontWeight: 'bold' }}>{p.status}</td>
+                  <tr key={p.id} className="font-semibold">
+                    <td className="px-4 py-3">{p.person_id}</td>
+                    <td className="px-4 py-3">{p.name}</td>
+                    <td className="px-4 py-3">{p.category}</td>
+                    <td className="px-4 py-3">{p.attendance_date}</td>
+                    <td className={`px-4 py-3 font-bold ${p.status === 'Present' ? 'text-emerald-700' : 'text-red-600'}`}>{p.status}</td>
                   </tr>
-                )) : <tr><td colSpan="5" style={{ textAlign: 'center' }}>No attendance records found for {pastDate}.</td></tr>}
+                )) : <tr><td colSpan="5" className="p-6 text-center font-bold text-slate-400">No attendance records found for {pastDate}.</td></tr>}
               </tbody>
             </table>
           </div>
         </div>
       )}
     </div>
+  );
+
+  return (
+    <>
+      <div className="screen-report-only h-full w-full">
+        <Background>{hubContent}</Background>
+      </div>
+      <Print title="PIASS Attendance Report">{absentPrintContent}</Print>
+    </>
   );
 }

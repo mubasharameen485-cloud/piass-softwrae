@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../services/supabaseClient';
+import Background from '../reports/Background';
+import Print from '../reports/Print';
 
 export default function TeacherDirectoryHub() {
   const [mode, setMode] = useState('menu'); // 'menu', 'list', 'manage'
@@ -7,8 +9,9 @@ export default function TeacherDirectoryHub() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   
-  // Edit state
-  const [editingTeacher, setEditingTeacher] = useState(null);
+  const [selectedTeacher, setSelectedTeacher] = useState(null);
+  const [teacherSalaries, setTeacherSalaries] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({});
   const [imageFile, setImageFile] = useState(null);
 
@@ -38,20 +41,34 @@ export default function TeacherDirectoryHub() {
     return `${(diffDays / 365).toFixed(1)} Years`;
   };
 
-  // Proper Delete from database
   const handleDeleteTeacher = async (id) => {
     if (!window.confirm("Are you sure you want to completely delete this teacher from database?")) return;
     try {
       const { error } = await supabase.from('teachers').delete().eq('id', id);
       if (error) throw error;
-      alert('✅ Teacher deleted successfully!');
+      alert('Teacher deleted successfully.');
       fetchTeachers();
+      setSelectedTeacher(null);
     } catch (err) {
-      alert('❌ Error: ' + err.message);
+      alert('Error: ' + err.message);
     }
   };
 
-  // Handle Edit Submit
+  const handleSelectTeacher = async (teacher) => {
+    setSelectedTeacher(teacher);
+    setEditForm(teacher);
+    setIsEditing(false);
+    try {
+      const { data } = await supabase
+        .from('teacher_payments')
+        .select('*')
+        .eq('teacher_id', teacher.teacher_id);
+      setTeacherSalaries(data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -61,7 +78,7 @@ export default function TeacherDirectoryHub() {
         const fileName = `teacher_${Date.now()}.${fileExt}`;
         const { error: uploadError } = await supabase.storage.from('campus_images').upload(fileName, imageFile);
         if (uploadError) throw uploadError;
-        const { data: publicURLData } = supabase.storage.from('campus_images').getPublicUrl(fileName);
+        const { data: publicURLData } = await supabase.storage.from('campus_images').getPublicUrl(fileName);
         imageUrl = publicURLData.publicUrl;
       }
 
@@ -79,12 +96,13 @@ export default function TeacherDirectoryHub() {
       const { error } = await supabase.from('teachers').update(updatedData).eq('id', editForm.id);
       if (error) throw error;
 
-      alert('✅ Teacher details updated successfully!');
-      setEditingTeacher(null);
+      alert('Teacher details updated successfully.');
+      setIsEditing(false);
       setImageFile(null);
       fetchTeachers();
+      setSelectedTeacher({ ...editForm, image_url: imageUrl });
     } catch (err) {
-      alert('❌ Error updating: ' + err.message);
+      alert('Error updating: ' + err.message);
     }
   };
 
@@ -93,59 +111,100 @@ export default function TeacherDirectoryHub() {
     t.teacher_id.toLowerCase().includes(search.toLowerCase())
   );
 
-  return (
-    <div style={{ padding: '20px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'Arial' }}>
-      <h2>👨‍🏫 Teachers Directory Hub</h2>
+  const teacherPrintContent = selectedTeacher ? (
+    <div className="text-slate-900 font-medium p-4">
+      <header className="mb-6 border-b-2 border-slate-300 pb-4 text-center">
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-[#078343]">Official Teacher Profile Record</p>
+        <h2 className="mt-1 text-2xl font-black text-[#062b55]">PIASS College of Nursing & IT</h2>
+        <p className="text-xs font-semibold text-slate-500 mt-1">Generated: {new Date().toLocaleString('en-PK')}</p>
+      </header>
 
-      {/* STEP 1: TWO MAIN BUTTONS MENU */}
-      {mode === 'menu' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '40px' }}>
-          <div 
-            onClick={() => setMode('list')} 
-            style={{ background: '#0f766e', color: 'white', padding: '40px', borderRadius: '10px', textAlign: 'center', cursor: 'pointer', fontSize: '1.3rem', fontWeight: 'bold', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
-          >
-            📋 Show All Teachers
+      <div className="flex gap-6 items-center mb-8 bg-slate-50 p-6 rounded-2xl border border-slate-200">
+        <div>
+          {selectedTeacher.image_url ? (
+            <img src={selectedTeacher.image_url} alt="" onError={(e)=>{e.target.src='https://via.placeholder.com/150?text=No+Image'}} className="w-28 h-28 object-cover rounded-full border-4 border-[#062b55]" />
+          ) : (
+            <div className="w-28 h-28 bg-slate-300 rounded-full flex items-center justify-center font-bold text-slate-600 text-xs">No Photo</div>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm w-full font-semibold text-slate-800">
+          <p><b>Full Name:</b> {selectedTeacher.full_name}</p>
+          <p><b>Teacher ID:</b> {selectedTeacher.teacher_id}</p>
+          <p><b>Father Name:</b> {selectedTeacher.father_name}</p>
+          <p><b>Subject:</b> {selectedTeacher.subject}</p>
+          <p><b>Degree:</b> {selectedTeacher.degree}</p>
+          <p><b>Experience:</b> {calculateExperience(selectedTeacher.joining_date)}</p>
+          <p><b>Gender:</b> {selectedTeacher.gender}</p>
+          <p><b>Status:</b> <span className={selectedTeacher.status === 'Active' ? 'text-emerald-700 font-bold' : 'text-red-600 font-bold'}>{selectedTeacher.status || 'Active'}</span></p>
+        </div>
+      </div>
+
+      <div className="flex justify-between mt-32 pt-4 border-t border-slate-400 text-sm font-bold">
+        <p>Teacher Signature</p>
+        <p>Authorized Principal / Registrar Stamp</p>
+      </div>
+    </div>
+  ) : null;
+
+  const hubContent = (
+    <div className="text-slate-900 font-medium">
+      <header className="mb-6 border-b border-slate-200 pb-4">
+        <p className="text-xs font-extrabold uppercase tracking-wider text-[#078343]">PIASS College of Nursing Kasur</p>
+        <h1 className="text-2xl font-black text-[#062b55]">Teachers Directory & Management</h1>
+      </header>
+
+      {mode === 'menu' && !selectedTeacher && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-10">
+          <div onClick={() => setMode('list')} className="cursor-pointer rounded-2xl border border-slate-300 bg-white p-8 text-center shadow-sm transition hover:border-[#062b55]">
+            <h3 className="text-xl font-black text-[#062b55]">Show All Teachers</h3>
+            <p className="text-xs text-slate-500 mt-2">Browse active teachers directory and click to view profiles.</p>
           </div>
-          <div 
-            onClick={() => setMode('manage')} 
-            style={{ background: '#2563eb', color: 'white', padding: '40px', borderRadius: '10px', textAlign: 'center', cursor: 'pointer', fontSize: '1.3rem', fontWeight: 'bold', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
-          >
-            ⚙️ Edit / Delete Teachers
+          <div onClick={() => setMode('manage')} className="cursor-pointer rounded-2xl border border-slate-300 bg-white p-8 text-center shadow-sm transition hover:border-[#062b55]">
+            <h3 className="text-xl font-black text-[#062b55]">Edit / Delete Teachers</h3>
+            <p className="text-xs text-slate-500 mt-2">Modify teacher profiles or remove records from database.</p>
           </div>
         </div>
       )}
 
-      {/* BACK TO MENU BUTTON */}
-      {mode !== 'menu' && (
-        <button onClick={() => { setMode('menu'); setEditingTeacher(null); }} style={{ background: '#64748b', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginBottom: '20px' }}>
-          ← Back to Teacher Menu
+      {mode !== 'menu' && !selectedTeacher && (
+        <button onClick={() => setMode('menu')} className="mb-6 cursor-pointer rounded-xl bg-slate-600 px-4 py-2 text-sm font-bold text-white shadow-xs hover:bg-slate-700">
+          ← Back to Menu
         </button>
       )}
 
-      {/* STEP 2: SHOW ALL TEACHERS LIST VIEW */}
-      {mode === 'list' && (
+      {selectedTeacher && (
+        <button onClick={() => setSelectedTeacher(null)} className="mb-6 cursor-pointer rounded-xl bg-slate-600 px-4 py-2 text-sm font-bold text-white shadow-xs hover:bg-slate-700 no-print">
+          ← Back to List
+        </button>
+      )}
+
+      {/* LIST VIEW (CLICKABLE TEACHERS) */}
+      {mode === 'list' && !selectedTeacher && (
         <div>
-          <h3>All Active Teachers</h3>
           <input 
             type="text" 
-            placeholder="Search teachers..." 
+            placeholder="Search teachers by name or ID..." 
             value={search} 
             onChange={(e) => setSearch(e.target.value)} 
-            style={{ width: '100%', padding: '10px', margin: '15px 0' }}
+            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold mb-6 shadow-xs"
           />
-          {loading ? <p>Loading...</p> : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
+          {loading ? <p className="font-bold">Loading teachers...</p> : (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {filteredTeachers.map(t => (
-                <div key={t.id} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                <div 
+                  key={t.id} 
+                  onClick={() => handleSelectTeacher(t)}
+                  className="cursor-pointer rounded-2xl border border-slate-300 bg-white p-5 shadow-xs transition hover:border-[#078343]"
+                >
                   {t.image_url ? (
-                    <img src={t.image_url} alt="" style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', marginBottom: '10px' }} />
+                    <img src={t.image_url} alt="" onError={(e)=>{e.target.src='https://via.placeholder.com/150?text=No+Image'}} className="w-16 h-16 rounded-full object-cover mb-3 border border-slate-300" />
                   ) : (
-                    <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#cbd5e1', marginBottom: '10px' }}></div>
+                    <div className="w-16 h-16 rounded-full bg-slate-200 mb-3 flex items-center justify-center text-xs font-bold text-slate-500">No Pic</div>
                   )}
-                  <h4 style={{ margin: '0 0 5px 0', color: '#0f766e' }}>{t.full_name}</h4>
-                  <p style={{ margin: '2px 0', fontSize: '0.85rem' }}>ID: <b>{t.teacher_id}</b></p>
-                  <p style={{ margin: '2px 0', fontSize: '0.85rem' }}>Subject: {t.subject}</p>
-                  <p style={{ margin: '2px 0', fontSize: '0.85rem' }}>Experience: <b>{calculateExperience(t.joining_date)}</b></p>
+                  <h4 className="text-base font-black text-[#062b55] mb-1">{t.full_name}</h4>
+                  <p className="text-xs font-semibold text-slate-600">ID: <b>{t.teacher_id}</b></p>
+                  <p className="text-xs font-semibold text-slate-600">Subject: {t.subject}</p>
+                  <p className="text-xs font-semibold text-slate-600">Experience: <b>{calculateExperience(t.joining_date)}</b></p>
                 </div>
               ))}
             </div>
@@ -153,99 +212,154 @@ export default function TeacherDirectoryHub() {
         </div>
       )}
 
-      {/* STEP 3: EDIT / DELETE MANAGEMENT VIEW */}
-      {mode === 'manage' && !editingTeacher && (
+      {/* MANAGE VIEW */}
+      {mode === 'manage' && !selectedTeacher && (
         <div>
-          <h3>Manage Teachers (Edit or Delete)</h3>
           <input 
             type="text" 
-            placeholder="Search by name or ID to edit/delete..." 
+            placeholder="Search teacher by name or ID to edit/delete..." 
             value={search} 
             onChange={(e) => setSearch(e.target.value)} 
-            style={{ width: '100%', padding: '10px', margin: '15px 0' }}
+            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold mb-6 shadow-xs"
           />
-          <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', background: '#fff' }}>
-            <thead>
-              <tr style={{ background: '#f1f5f9' }}>
-                <th>Photo</th>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Subject</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTeachers.map(t => (
-                <tr key={t.id}>
-                  <td style={{ textAlign: 'center' }}>
-                    {t.image_url ? <img src={t.image_url} alt="" style={{ width: '35px', height: '35px', borderRadius: '50%', objectFit: 'cover' }} /> : 'No Pic'}
-                  </td>
-                  <td><b>{t.teacher_id}</b></td>
-                  <td>{t.full_name}</td>
-                  <td>{t.subject}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={() => { setEditingTeacher(t); setEditForm(t); }} style={{ background: '#0284c7', color: 'white', border: 'none', padding: '5px 10px', cursor: 'pointer', borderRadius: '4px' }}>Edit</button>
-                      <button onClick={() => handleDeleteTeacher(t.id)} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '5px 10px', cursor: 'pointer', borderRadius: '4px' }}>Delete</button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto rounded-2xl border border-slate-300 bg-white shadow-xs">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead className="bg-[#062b55] text-white">
+                <tr>
+                  <th className="px-4 py-3 font-bold text-center">Photo</th>
+                  <th className="px-4 py-3 font-bold">ID</th>
+                  <th className="px-4 py-3 font-bold">Name</th>
+                  <th className="px-4 py-3 font-bold">Subject</th>
+                  <th className="px-4 py-3 font-bold">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {filteredTeachers.map(t => (
+                  <tr key={t.id} className="font-semibold">
+                    <td className="px-4 py-3 text-center">
+                      {t.image_url ? <img src={t.image_url} alt="" onError={(e)=>{e.target.src='https://via.placeholder.com/150?text=No+Image'}} className="w-10 h-10 rounded-full object-cover mx-auto border border-slate-300" /> : 'No Pic'}
+                    </td>
+                    <td className="px-4 py-3 text-slate-900">{t.teacher_id}</td>
+                    <td className="px-4 py-3 text-slate-900">{t.full_name}</td>
+                    <td className="px-4 py-3 text-slate-800">{t.subject}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        <button onClick={() => handleSelectTeacher(t)} className="cursor-pointer bg-sky-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-xs hover:bg-sky-700">Edit</button>
+                        <button onClick={() => handleDeleteTeacher(t.id)} className="cursor-pointer bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-xs hover:bg-red-700">Delete</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
-      {/* EDIT MODAL / FORM */}
-      {editingTeacher && (
-        <div style={{ background: '#fff', padding: '25px', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop: '20px' }}>
-          <h3>✏️ Edit Teacher: {editingTeacher.full_name}</h3>
-          <form onSubmit={handleUpdateSubmit} style={{ display: 'grid', gap: '12px', marginTop: '15px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label>Full Name:</label>
-                <input type="text" value={editForm.full_name || ''} onChange={(e) => setEditForm({...editForm, full_name: e.target.value})} required style={{ width: '100%', padding: '8px' }} />
-              </div>
-              <div>
-                <label>Father Name:</label>
-                <input type="text" value={editForm.father_name || ''} onChange={(e) => setEditForm({...editForm, father_name: e.target.value})} required style={{ width: '100%', padding: '8px' }} />
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label>Subject:</label>
-                <input type="text" value={editForm.subject || ''} onChange={(e) => setEditForm({...editForm, subject: e.target.value})} required style={{ width: '100%', padding: '8px' }} />
-              </div>
-              <div>
-                <label>Degree:</label>
-                <input type="text" value={editForm.degree || ''} onChange={(e) => setEditForm({...editForm, degree: e.target.value})} required style={{ width: '100%', padding: '8px' }} />
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label>Experience Note:</label>
-                <input type="text" value={editForm.experience || ''} onChange={(e) => setEditForm({...editForm, experience: e.target.value})} required style={{ width: '100%', padding: '8px' }} />
-              </div>
-              <div>
-                <label>Age:</label>
-                <input type="number" value={editForm.age || ''} onChange={(e) => setEditForm({...editForm, age: e.target.value})} required style={{ width: '100%', padding: '8px' }} />
-              </div>
-            </div>
-
+      {/* SELECTED TEACHER PROFILE & EDIT VIEW */}
+      {selectedTeacher && (
+        <div className="rounded-2xl border border-slate-300 bg-white p-8 shadow-xs">
+          {!isEditing ? (
             <div>
-              <label>Update Photo:</label>
-              <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} style={{ width: '100%', padding: '5px' }} />
-            </div>
+              <div className="flex justify-between items-center mb-6 no-print">
+                <h3 className="text-xl font-black text-[#062b55]">Teacher Profile</h3>
+                <div className="flex gap-3">
+                  <button onClick={() => window.print()} className="cursor-pointer bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-xs hover:bg-emerald-700">Print Profile</button>
+                  <button onClick={() => setIsEditing(true)} className="cursor-pointer bg-sky-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-xs hover:bg-sky-700">Edit Details</button>
+                </div>
+              </div>
 
-            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-              <button type="submit" style={{ background: '#16a34a', color: 'white', padding: '10px 20px', border: 'none', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>Save Changes</button>
-              <button type="button" onClick={() => setEditingTeacher(null)} style={{ background: '#64748b', color: 'white', padding: '10px 20px', border: 'none', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>Cancel</button>
+              <div className="flex gap-6 items-center mb-8 bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                <div>
+                  {selectedTeacher.image_url ? (
+                    <img src={selectedTeacher.image_url} alt="" onError={(e)=>{e.target.src='https://via.placeholder.com/150?text=No+Image'}} className="w-24 h-24 rounded-full object-cover border-3 border-[#062b55]" />
+                  ) : (
+                    <div className="w-24 h-24 rounded-full bg-slate-300 flex items-center justify-center font-bold text-slate-600 text-xs">No Photo</div>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm font-semibold text-slate-800">
+                  <p><b>Name:</b> {selectedTeacher.full_name}</p>
+                  <p><b>Teacher ID:</b> {selectedTeacher.teacher_id}</p>
+                  <p><b>Subject:</b> {selectedTeacher.subject}</p>
+                  <p><b>Degree:</b> {selectedTeacher.degree}</p>
+                  <p><b>Experience:</b> {calculateExperience(selectedTeacher.joining_date)}</p>
+                  <p><b>Status:</b> <span className={selectedTeacher.status === 'Active' ? 'text-emerald-700 font-bold' : 'text-red-600 font-bold'}>{selectedTeacher.status || 'Active'}</span></p>
+                </div>
+              </div>
+
+              <h4 className="text-base font-black text-[#062b55] mb-3">Salary Payment History</h4>
+              <div className="overflow-x-auto rounded-xl border border-slate-300 bg-white">
+                <table className="w-full border-collapse text-left text-sm">
+                  <thead className="bg-[#062b55] text-white">
+                    <tr>
+                      <th className="px-4 py-3 font-bold">Month</th>
+                      <th className="px-4 py-3 font-bold">Total Salary</th>
+                      <th className="px-4 py-3 font-bold">Paid Amount</th>
+                      <th className="px-4 py-3 font-bold">Note</th>
+                      <th className="px-4 py-3 font-bold">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {teacherSalaries.length > 0 ? teacherSalaries.map(s => (
+                      <tr key={s.id} className="font-semibold">
+                        <td className="px-4 py-3">{s.salary_month}</td>
+                        <td className="px-4 py-3">Rs. {s.total_salary}</td>
+                        <td className="px-4 py-3 text-emerald-700 font-bold">Rs. {s.paid_amount}</td>
+                        <td className="px-4 py-3">{s.payment_note}</td>
+                        <td className="px-4 py-3">{new Date(s.payment_date).toLocaleDateString()}</td>
+                      </tr>
+                    )) : <tr><td colSpan="5" className="p-6 text-center font-bold text-slate-400">No salary records found for this teacher.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </form>
+          ) : (
+            <form onSubmit={handleUpdateSubmit} className="grid gap-4">
+              <h3 className="text-lg font-black text-[#062b55]">Edit Teacher Profile</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#062b55] mb-1">Full Name:</label>
+                  <input type="text" value={editForm.full_name || ''} onChange={(e) => setEditForm({...editForm, full_name: e.target.value})} required className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-semibold" />
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#062b55] mb-1">Father Name:</label>
+                  <input type="text" value={editForm.father_name || ''} onChange={(e) => setEditForm({...editForm, father_name: e.target.value})} required className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-semibold" />
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#062b55] mb-1">Subject:</label>
+                  <input type="text" value={editForm.subject || ''} onChange={(e) => setEditForm({...editForm, subject: e.target.value})} required className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-semibold" />
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#062b55] mb-1">Degree:</label>
+                  <input type="text" value={editForm.degree || ''} onChange={(e) => setEditForm({...editForm, degree: e.target.value})} required className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-semibold" />
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#062b55] mb-1">Experience Note:</label>
+                  <input type="text" value={editForm.experience || ''} onChange={(e) => setEditForm({...editForm, experience: e.target.value})} required className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-semibold" />
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#062b55] mb-1">Update Photo:</label>
+                  <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} className="w-full rounded-xl border border-slate-300 bg-slate-50 p-2 text-sm" />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-4">
+                <button type="submit" className="cursor-pointer bg-emerald-600 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-xs hover:bg-emerald-700">Save Changes</button>
+                <button type="button" onClick={() => setIsEditing(false)} className="cursor-pointer bg-slate-500 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-xs hover:bg-slate-600">Cancel</button>
+              </div>
+            </form>
+          )}
         </div>
       )}
     </div>
+  );
+
+  return (
+    <>
+      <div className="screen-report-only h-full w-full">
+        <Background>{hubContent}</Background>
+      </div>
+      <Print title="PIASS Teacher Profile">{teacherPrintContent}</Print>
+    </>
   );
 }

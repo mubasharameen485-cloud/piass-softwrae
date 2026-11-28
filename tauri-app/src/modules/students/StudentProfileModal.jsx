@@ -1,129 +1,119 @@
-import React, { useEffect, useState } from 'react';
-import { getStudentFeeHistory, updateStudentSemester } from './studentRecordService';
+import React, { useState } from 'react';
+import { updateStudentSemester } from './studentRecordService';
+import Print from '../reports/Print';
 
 export default function StudentProfileModal({ student, onClose, onUpdate }) {
-  const [feeHistory, setFeeHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [newSem, setNewSem] = useState(student.semester);
   const [updating, setUpdating] = useState(false);
-
-  useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const data = await getStudentFeeHistory(student.roll_no);
-        setFeeHistory(data || []);
-      } catch (err) {
-        console.error('Error fetching fee history:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchHistory();
-  }, [student.roll_no]);
 
   const handlePromote = async () => {
     try {
       setUpdating(true);
       await updateStudentSemester(student.id, newSem);
-      alert('✅ Student semester updated successfully!');
+      alert('Student semester updated successfully.');
       if (onUpdate) onUpdate();
     } catch (err) {
-      alert('❌ Error updating semester: ' + err.message);
+      alert('Error updating semester: ' + err.message);
     } finally {
       setUpdating(false);
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
+  // Dedicated A4 Print Content wrapped inside Print.jsx layout standard
+  const profilePrintContent = (
+    <div className="text-slate-900 font-medium">
+      <header className="mb-6 border-b-2 border-slate-300 pb-4 text-center">
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-[#078343]">Official Student Profile Record</p>
+        <h2 className="mt-1 text-2xl font-black text-[#062b55]">PIASS College of Nursing & IT</h2>
+        <p className="text-xs font-semibold text-slate-500 mt-1">Generated: {new Date().toLocaleString('en-PK')}</p>
+      </header>
+
+      <div className="flex gap-6 items-center mb-8 bg-slate-50 p-6 rounded-2xl border border-slate-200">
+        <div>
+          {student.image_url ? (
+            <img 
+              src={student.image_url} 
+              alt="Student" 
+              onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=No+Image'; }}
+              className="w-28 h-28 object-cover rounded-full border-4 border-[#062b55]" 
+            />
+          ) : (
+            <div className="w-28 h-28 bg-slate-300 rounded-full flex items-center justify-center font-bold text-slate-600 text-xs">No Photo</div>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm w-full font-semibold text-slate-800">
+          <p><b>Full Name:</b> {student.full_name}</p>
+          <p><b>Roll Number:</b> {student.roll_no}</p>
+          <p><b>Father Name:</b> {student.father_name}</p>
+          <p><b>Program:</b> {student.category}</p>
+          <p><b>Semester:</b> {student.semester}</p>
+          <p><b>Phone:</b> {student.phone || '—'}</p>
+          <p><b>Email:</b> {student.email || '—'}</p>
+          <p><b>Status:</b> <span className={student.status === 'Active' ? 'text-emerald-700 font-bold' : 'text-red-600 font-bold'}>{student.status}</span></p>
+        </div>
+      </div>
+
+      <div className="flex justify-between mt-32 pt-4 border-t border-slate-400 text-sm font-bold">
+        <p>Student Signature</p>
+        <p>Authorized Principal / Registrar Stamp</p>
+      </div>
+    </div>
+  );
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-      <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', width: '700px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}>
-        
-        {/* Header with Print & Close */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #0f766e', paddingBottom: '10px', marginBottom: '20px' }} className="no-print">
-          <h2>📄 Student Profile & Full Record</h2>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={handlePrint} style={{ background: '#16a34a', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>🖨️ Print Profile</button>
-            <button onClick={onClose} style={{ background: '#dc2626', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>✕ Close</button>
+    <>
+      {/* Screen View Modal */}
+      <div className="fixed inset-0 bg-slate-900/50 flex justify-center items-center z-50 no-print p-4">
+        <div className="bg-white p-8 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
+          
+          <div className="flex justify-between items-center border-b border-slate-200 pb-4 mb-6">
+            <h2 className="text-xl font-black text-[#062b55]">Student Full Profile</h2>
+            <div className="flex gap-3">
+              <button onClick={() => window.print()} className="cursor-pointer bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-xs hover:bg-emerald-700">Print Profile</button>
+              <button onClick={onClose} className="cursor-pointer bg-slate-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-xs hover:bg-slate-600">Close</button>
+            </div>
           </div>
-        </div>
 
-        {/* Printable Area */}
-        <div id="printable-profile">
-          {/* Top Info (Photo + Details) */}
-          <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px', background: '#f8fafc', padding: '15px', borderRadius: '6px' }}>
+          <div className="flex gap-6 items-center mb-6 bg-slate-50 p-6 rounded-2xl border border-slate-200">
             <div>
               {student.image_url ? (
-                <img src={student.image_url} alt="Student" style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '50%', border: '3px solid #0f766e' }} />
+                <img 
+                  src={student.image_url} 
+                  alt="Student" 
+                  onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=No+Image'; }}
+                  className="w-24 h-24 object-cover rounded-full border-3 border-[#062b55]" 
+                />
               ) : (
-                <div style={{ width: '100px', height: '100px', background: '#cbd5e1', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold', color: '#555' }}>No Photo</div>
+                <div className="w-24 h-24 bg-slate-300 rounded-full flex items-center justify-center font-bold text-slate-600 text-xs">No Photo</div>
               )}
             </div>
-            <div>
-              <h3 style={{ margin: '0 0 5px 0', color: '#0f766e' }}>{student.full_name}</h3>
-              <p style={{ margin: '3px 0' }}><b>Roll No / ID:</b> {student.roll_no}</p>
-              <p style={{ margin: '3px 0' }}><b>Father Name:</b> {student.father_name}</p>
-              <p style={{ margin: '3px 0' }}><b>Program:</b> {student.category}</p>
-              <p style={{ margin: '3px 0' }}><b>Current Semester:</b> <span style={{ color: '#2563eb', fontWeight: 'bold' }}>{student.semester}</span></p>
-              <p style={{ margin: '3px 0' }}><b>Phone:</b> {student.phone} | <b>Status:</b> <span style={{ color: student.status === 'Active' ? 'green' : 'red' }}>{student.status}</span></p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm font-semibold text-slate-800">
+              <p><b>Name:</b> {student.full_name}</p>
+              <p><b>Roll No:</b> {student.roll_no}</p>
+              <p><b>Father:</b> {student.father_name}</p>
+              <p><b>Program:</b> {student.category}</p>
+              <p><b>Semester:</b> {student.semester}</p>
+              <p><b>Phone:</b> {student.phone || '—'}</p>
             </div>
           </div>
 
-          {/* Quick Promote Section (Inside Modal) */}
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '20px', background: '#e2e8f0', padding: '10px', borderRadius: '6px' }} className="no-print">
-            <label style={{ fontWeight: 'bold' }}>Change Semester:</label>
-            <select value={newSem} onChange={(e) => setNewSem(e.target.value)} style={{ padding: '6px' }}>
+          <div className="flex gap-3 items-center bg-slate-100 p-4 rounded-xl mb-4">
+            <label className="text-xs font-black uppercase text-[#062b55]">Change Semester:</label>
+            <select value={newSem} onChange={(e) => setNewSem(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-bold">
               {["1st Semester", "2nd Semester", "3rd Semester", "4th Semester", "5th Semester", "6th Semester", "7th Semester", "8th Semester"].map((s, i) => (
                 <option key={i} value={s}>{s}</option>
               ))}
             </select>
-            <button onClick={handlePromote} disabled={updating} style={{ background: '#2563eb', color: 'white', border: 'none', padding: '6px 12px', cursor: 'pointer', borderRadius: '4px', fontWeight: 'bold' }}>
+            <button onClick={handlePromote} disabled={updating} className="cursor-pointer bg-[#062b55] text-white px-4 py-2 rounded-xl text-sm font-bold shadow-xs hover:bg-[#0b3e78]">
               {updating ? 'Updating...' : 'Update Semester'}
             </button>
           </div>
 
-          {/* Fee History Table */}
-          <h4>💰 Fee Payment History</h4>
-          {loading ? (
-            <p>Loading fee history...</p>
-          ) : (
-            <table border="1" cellPadding="8" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px', background: 'white' }}>
-              <thead>
-                <tr style={{ background: '#f1f5f9' }}>
-                  <th>Total Fee</th>
-                  <th>Paid Amount</th>
-                  <th>Remaining</th>
-                  <th>Note</th>
-                  <th>Collector</th>
-                  <th>Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {feeHistory.length > 0 ? (
-                  feeHistory.map(f => (
-                    <tr key={f.id}>
-                      <td>Rs. {f.total_fee}</td>
-                      <td style={{ color: 'green', fontWeight: 'bold' }}>Rs. {f.paid_amount}</td>
-                      <td style={{ color: 'red', fontWeight: 'bold' }}>Rs. {f.remaining_balance}</td>
-                      <td>{f.installment_note}</td>
-                      <td>{f.collected_by}</td>
-                      <td>{new Date(f.payment_date).toLocaleDateString()}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="6" style={{ textAlign: 'center' }}>No fee records found for this student.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          )}
         </div>
-
       </div>
-    </div>
+
+      {/* Dedicated Print Layout Wrapper */}
+      <Print title="PIASS Student Profile">{profilePrintContent}</Print>
+    </>
   );
 }
